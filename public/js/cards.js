@@ -96,9 +96,12 @@
       <div class="vc-actions">${d.canRemind ? `<button class="btn sm primary" data-propose="send_udhaar_reminders">${i('bell-ring')}${t(T.remindAll, lang)}</button>` : ''}${openLink(c, lang)}</div></div>`;
   };
   R.loan_offer = (c, lang) => {
-    const d = c.data, p = d.plan;
+    const d = c.data;
     if (d.active) return `<div class="vc vc-loan">${head('hand-coins', t(T.running, lang), null, lang)}<div class="vc-big">${inr(d.active.outstanding)} <small>${t(T.left, lang)}</small></div><div class="vc-meta"><span>${inr(d.active.emi)} ${t(T.monthly, lang)}</span><span>${t(T.ends, lang)}: ${esc(d.active.finish)}</span></div>${openLink(c, lang)}</div>`;
-    const id = 'L' + (d.asked || 0) + '-' + p.amount + '-' + p.months;
+    const id = 'L' + (d.asked || 0) + '-' + d.plan.amount + '-' + d.plan.months;
+    // what he set on the sliders survives the chat being redrawn
+    const kept = loanState[id];
+    const p = kept && kept.plan ? { ...d.plan, ...kept.plan } : { ...d.plan, ...(kept ? { amount: kept.amount, months: kept.months } : {}) };
     return `<div class="vc vc-loan" data-loancard="${id}" data-limit="${d.limit}">${head('hand-coins', t(T.loanOffer, lang), null, lang, d.asked ? `<span class="vc-pill ${d.fits ? 'ok' : 'warn'}">${t(d.fits ? T.fits : T.above, lang)}</span>` : '')}
       <div class="vc-big"><span data-lv="emi">${inr(p.emi)}</span> <small>${t(T.monthly, lang)}</small></div>
       <label class="vc-slider"><span>${t(T.amount, lang)} <b data-lv="amount">${inr(p.amount)}</b></span><input type="range" min="${d.min}" max="${Math.max(d.min, d.max)}" step="5000" value="${p.amount}" data-loanin="amount"></label>
@@ -171,19 +174,27 @@
     }
   });
   const timers = {};
+  const loanState = {};
   document.addEventListener('input', (e) => {
     const s = e.target.closest('[data-loanin]');
     if (!s) return;
     const card = s.closest('[data-loancard]');
     const v = (k) => card.querySelector(`[data-loanin="${k}"]`).value;
+    const key = card.dataset.loancard;
+    loanState[key] = { ...(loanState[key] || {}), amount: Number(v('amount')), months: Number(v('months')), plan: null };
     card.querySelector('[data-lv="amount"]').textContent = inr(Number(v('amount')));
     card.querySelector('[data-lv="months"]').textContent = v('months');
-    clearTimeout(timers[card.dataset.loancard]);
-    timers[card.dataset.loancard] = setTimeout(async () => {
+    clearTimeout(timers[key]);
+    timers[key] = setTimeout(async () => {
       try {
         const p = await (await fetch(`/api/loanplan?amount=${v('amount')}&months=${v('months')}`)).json();
-        const set = (k, txt) => { const el = card.querySelector(`[data-lv="${k}"]`); if (el) el.textContent = txt; };
-        set('emi', inr(p.emi)); set('rate', p.rate + '%'); set('totalInterest', inr(p.totalInterest)); set('received', inr(p.received)); set('finish', p.finish);
+        loanState[key].plan = { amount: p.amount, months: p.months, rate: p.rate, emi: p.emi, totalInterest: p.totalInterest, received: p.received, finish: p.finish };
+        // the card may have been redrawn while the numbers were on the way
+        const live = document.querySelectorAll(`[data-loancard="${key}"]`);
+        live.forEach((el) => {
+          const set = (k, txt) => { const x = el.querySelector(`[data-lv="${k}"]`); if (x) x.textContent = txt; };
+          set('emi', inr(p.emi)); set('rate', p.rate + '%'); set('totalInterest', inr(p.totalInterest)); set('received', inr(p.received)); set('finish', p.finish);
+        });
       } catch { /* keep the last numbers */ }
     }, 180);
   });
