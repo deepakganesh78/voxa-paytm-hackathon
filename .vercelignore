@@ -1,0 +1,10 @@
+node_modules
+.env
+.env.*
+.data
+.git
+test
+*.log
+render.yaml
+video
+.claude

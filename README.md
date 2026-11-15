@@ -35,14 +35,19 @@ Open http://localhost:3000. With no API keys it runs in **offline mode**: Voxa a
 Copy `.env.example` to a new file named `.env` in this folder and fill in your own key. `.env` is private: git ignores it, so it is never pushed. Restart `npm start` after changing it. **Restarting clears the demo data**, so set the key first.
 
 ```
-SARVAM_API_KEY=your-sarvam-key
+GEMINI_API_KEY=your-gemini-key
+VOXA_BRAIN=gemini
+CARTESIA_API_KEY=your-cartesia-key
 ```
 
 | Variable | What it does |
 |---|---|
-| `SARVAM_API_KEY` | Voxa's **brain** is Sarvam `sarvam-105b` with tool calling: it decides what to look up, saves costs and notes, and answers in Tamil. It **reads bill photos** with a Sarvam image model, **listens** with Saaras and **speaks** with Bulbul. Reasoning is off and replies are short, to save credits (about ₹0.05 a question). |
-| `ANTHROPIC_API_KEY` | Optional. If set, Claude is the brain instead of Sarvam. |
-| `VOXA_BRAIN` | Optional: `sarvam`, `claude` or `rules` to force one. |
+| `GEMINI_API_KEY` | Voxa's **brain** can use Gemini (`GEMINI_MODEL`, default `gemini-3.6-flash`) with tool calling. Set `VOXA_BRAIN=gemini` to select it. |
+| `SARVAM_API_KEY` | Voxa can use Sarvam `sarvam-105b` with tool calling and can read bill photos, listen with Saaras, and speak with Bulbul. |
+| `ANTHROPIC_API_KEY` | Optional. Claude is selected by default if configured; `VOXA_BRAIN` can choose another provider. |
+| `GROQ_API_KEY` | Optional. Speech-to-text with Groq Whisper (`GROQ_STT_MODEL`, default `whisper-large-v3`). It detects English, Tamil or Hindi automatically. Without it, Cartesia (`CARTESIA_API_KEY`) transcribes in the language selected on screen. |
+| `CARTESIA_API_KEY` | Optional. Cartesia TTS uses Skylar for English, Janani for Tamil and Siya for Hindi. Voice IDs can be set with `CARTESIA_EN_VOICE_ID`, `CARTESIA_TA_VOICE_ID` and `CARTESIA_HI_VOICE_ID`. The merchant chat switches the screen and voice to the language the merchant types or speaks. |
+| `VOXA_BRAIN` | Optional: `gemini`, `sarvam`, `claude` or `rules` to force one. |
 | `VOXA_EVENTS_AI` | Optional. `off` keeps automatic stuck-payment handling on the free rules, so only questions you ask use credits. |
 | `SARVAM_VISION_MODEL` | Optional. Default `gemma4` for bill photos. |
 | `RESET_PIN` | Optional. If set, "Reset demo" asks for this PIN. |
@@ -51,9 +56,9 @@ SARVAM_API_KEY=your-sarvam-key
 
 **Bill photos are checked on the phone first, for free.** Only a photo that looks like a printed or written bill (mostly white paper with text, no face, not colourful) is sent to the AI. Everything else is stopped before it leaves the phone, and the AI is also told to refuse anything that is not a bill.
 
-**Safety limits:** at most 4 AI calls per question (the last one must answer), the same tool is never run twice for one question, the agent can only use the tools it is given (it can write only notes and costs, and never messages customers), every call times out after 45 seconds, and the spend cap and per-minute limit above stop runaway costs.
+**Safety limits:** tool-use loops are bounded, the same tool is never run twice for one question, the agent can only use the tools it is given (it can write only notes and costs, and never messages customers), every model call times out after 45 seconds, and Sarvam's spend cap and per-minute limit stop runaway costs.
 
-If an AI call fails (no internet, no credits), Voxa falls back to the built-in rules, so the demo never freezes. The support console's agent log shows which one ran (`sarvam`, `claude` or `rules`), with the tokens used.
+If an AI call fails (no internet, no credits), Voxa falls back to the built-in rules, so the demo never freezes. The support console's agent log shows which one ran (`gemini`, `sarvam`, `claude` or `rules`).
 
 ## 3. Put it online (Render, free)
 
@@ -80,6 +85,24 @@ There is also a `render.yaml`, so **New → Blueprint** works too.
 **Important on the free plan:** the app sleeps after 15 minutes with no visitors, and waking up takes about a minute. Sleeping also **resets all demo data**. Open the link 5 minutes before you present, and keep one screen open.
 
 > All data lives in memory. It resets when the server restarts or when you press **Reset demo** in Voxa Support. Press Reset right before you go on stage.
+
+### Or put it on Vercel (phone web app)
+
+The app is built for phones: every screen is responsive, it can be installed to the home screen (Share → Add to Home Screen, or Chrome → Install app), and spoken replies work on phones.
+
+```bash
+npx vercel login      # once
+npm run deploy        # links the project, copies the keys from your private .env, publishes to production
+```
+
+`npm run deploy` (see `scripts/deploy-vercel.mjs`) sends only the keys listed there (`GEMINI_API_KEY`, `CARTESIA_API_KEY`, `GROQ_API_KEY`, …) to the Vercel project as environment variables, and never prints them. The project name is `voxa-pay`; change it with `VERCEL_PROJECT=name npm run deploy`.
+
+How it differs from a normal server:
+
+- Vercel runs several copies of the server at once, so the demo data is kept in Vercel's shared **Runtime Cache** (`src/shared.js`). Every copy adopts newer data before it answers an API call and publishes a change before it replies. The cache survives new deployments, expires after a day without changes, and **Reset demo** clears it for everyone.
+- Screens poll for updates about once a second instead of holding a live (SSE) connection open.
+- The public address is `https://<project>.vercel.app`. Preview links are behind Vercel sign-in; the production address is open to anyone who has it, and so are the AI and voice keys' usage, so share the link with care and set `RESET_PIN`.
+- Test locally with several copies: start servers on different ports with the same `VOXA_SHARED_DIR=some-folder`.
 
 ---
 

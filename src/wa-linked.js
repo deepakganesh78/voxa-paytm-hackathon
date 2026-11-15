@@ -2,10 +2,11 @@
 // The shop's WhatsApp scans a QR once (WhatsApp → Linked devices); then Voxa sends and receives from that number.
 // Free, but NOT an official WhatsApp API: use a spare or demo number, not someone's main one.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.data', 'wa-auth');
+const DIR = process.env.VERCEL ? path.join(os.tmpdir(), 'voxa-data', 'wa-auth') : path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.data', 'wa-auth');
 let B = null, sock = null, starting = false, onMsg = null, onState = null;
 export const link = { status: 'off', qr: null, me: null, error: null };
 const setLink = (patch) => {

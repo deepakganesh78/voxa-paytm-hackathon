@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 // The fake-money payment engine. State lives in memory and is saved to .data/state.json, so it survives restarts.
 import { EventEmitter } from 'node:events';
+import * as shared from './shared.js';
 import { buildSeed } from './seed.js';
 import { msg, rupee } from './i18n.js';
 
@@ -68,7 +69,7 @@ function initial() {
       reward: '₹150 off your next bill',
       loyaltyDays: 7,
       perPayment: true, // demo: every payment counts as a visit (off = one per day)
-      settings: { enabled: false, merchantPhone: '', dailySummary: true, summaryTime: '21:00', udharAlerts: true, stuckAlerts: true },
+      settings: { enabled: false, merchantPhone: process.env.VOXA_MERCHANT_PHONE || '', dailySummary: true, summaryTime: '21:00', udharAlerts: true, stuckAlerts: true, loyaltyAlerts: true },
     },
     nextTicket: 48217,
     nextTxn: 1,
@@ -78,27 +79,75 @@ function initial() {
 
 export function getState() { return S; }
 
+// ---------- sharing the demo data between server copies (Vercel) ----------
+// S.rev is a timestamp-like revision, so "newest wins" works across copies. A copy that has just started is behind
+// (rev 0), so it first adopts what is shared and never overwrites it with its own starting data.
+export const sharedEnabled = shared.enabled;
+const STATE_KEY = 'voxa-state-v1', REV_KEY = 'voxa-rev-v1';
+let dirty = false, syncing = null, publishing = null, lastSync = 0;
+
+// Writes this copy's data to the shared store if it has changed since the last write.
+export function flushShared() {
+  if (!shared.enabled || !dirty) return Promise.resolve();
+  if (publishing) return publishing;
+  publishing = (async () => {
+    try {
+      const rev = S.rev;
+      dirty = false;
+      await shared.set(STATE_KEY, { rev, state: S });
+      await shared.set(REV_KEY, rev);
+      lastSync = Date.now();
+    } catch (e) { dirty = true; console.error('shared publish failed:', e.message); } finally { publishing = null; }
+  })();
+  return publishing;
+}
+
+// Adopts newer shared data (or publishes ours, if ours is newer). Called before every API request.
+export function syncShared() {
+  if (!shared.enabled) return Promise.resolve();
+  if (syncing) return syncing;
+  if (Date.now() - lastSync < 300) return Promise.resolve();
+  syncing = (async () => {
+    try {
+      const remoteRev = Number(await shared.get(REV_KEY)) || 0;
+      if (remoteRev > S.rev) {
+        const doc = await shared.get(STATE_KEY);
+        if (doc && doc.state && doc.rev > S.rev) {
+          shared.mergeInto(S, doc.state);
+          S.rev = doc.rev;
+          dirty = false;
+          bus.emit('change');
+        }
+      } else if (dirty) await flushShared();
+    } catch (e) { console.error('shared sync failed:', e.message); } finally { lastSync = Date.now(); syncing = null; }
+  })();
+  return syncing;
+}
+
 let touchTimer = null;
 export function touch() {
-  S.rev++;
+  S.rev = Math.max(S.rev + 1, Date.now());
+  dirty = true;
   if (touchTimer) return;
-  touchTimer = setTimeout(() => { touchTimer = null; bus.emit('change'); save(); }, 60);
+  touchTimer = setTimeout(() => { touchTimer = null; bus.emit('change'); save(); shared.keepAlive(flushShared()); }, 60);
 }
 
 // The demo data is saved to .data/state.json, so restarting the server (for a new key or new code)
 // keeps everyone's payments, tickets and notes. Only "Reset demo" clears them.
+// Vercel's disk is read-only except /tmp, and the data is kept in the shared cache there instead.
+const FILE_PERSIST = process.env.VOXA_PERSIST !== 'off' && !process.env.VERCEL;
 const DATA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.data');
 const DATA_FILE = path.join(DATA_DIR, 'state.json');
 let saveTimer = null;
 function save() {
-  if (process.env.VOXA_PERSIST === 'off' || saveTimer) return;
+  if (!FILE_PERSIST || saveTimer) return;
   saveTimer = setTimeout(() => {
     saveTimer = null;
     try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.writeFileSync(DATA_FILE + '.tmp', JSON.stringify(S)); fs.renameSync(DATA_FILE + '.tmp', DATA_FILE); } catch (e) { console.error('save failed', e.message); }
   }, 300);
 }
 function load() {
-  if (process.env.VOXA_PERSIST === 'off') return null;
+  if (!FILE_PERSIST) return null;
   try {
     const x = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     delete x.planner;
@@ -126,6 +175,8 @@ export function resetState() {
 const restored = load();
 if (restored) { S = restored; console.log(`Restored demo data: ${S.txns.length} payments, ${S.tickets.length} tickets, ${S.board.length} notes`); touch(); }
 else resetState();
+// a copy that starts on Vercel is behind the shared data until its first request adopts it
+if (shared.enabled) { S.rev = 0; dirty = false; }
 
 // ---------- helpers ----------
 export const findTxn = (id) => S.txns.find((t) => t.id === id);
@@ -872,6 +923,8 @@ const FESTIVALS = [
 const dayMs = 86400000;
 const TA_MON = { Jan: 'ஜனவரி', Feb: 'பிப்ரவரி', Mar: 'மார்ச்', Apr: 'ஏப்ரல்', May: 'மே', Jun: 'ஜூன்', Jul: 'ஜூலை', Aug: 'ஆகஸ்ட்', Sep: 'செப்டம்பர்', Oct: 'அக்டோபர்', Nov: 'நவம்பர்', Dec: 'டிசம்பர்' };
 const TA_FEST = { Pongal: 'பொங்கல்', 'Tamil New Year': 'தமிழ்ப் புத்தாண்டு', 'Vinayagar Chathurthi': 'விநாயகர் சதுர்த்தி', Deepavali: 'தீபாவளி' };
+const HI_MON = { Jan: 'जनवरी', Feb: 'फ़रवरी', Mar: 'मार्च', Apr: 'अप्रैल', May: 'मई', Jun: 'जून', Jul: 'जुलाई', Aug: 'अगस्त', Sep: 'सितंबर', Oct: 'अक्टूबर', Nov: 'नवंबर', Dec: 'दिसंबर' };
+const HI_FEST = { Pongal: 'पोंगल', 'Tamil New Year': 'तमिल नववर्ष', 'Vinayagar Chathurthi': 'विनायक चतुर्थी', Deepavali: 'दीपावली' };
 const taMon = (s) => String(s).replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b/g, (m, k) => TA_MON[k]);
 
 export function regularsStatus() {
@@ -890,7 +943,21 @@ export function plannerInsights() {
   const today = new Date(); today.setHours(0, 0, 0, 0);
 
   const h = hourlyInsight();
-  out.push({ id: 'quiet', icon: 'clock', title: `2 PM to 5 PM is your quiet time`, text: `Sales in these hours are about ${h.dropPercent}% below a normal hour. A good time to restock, do home deliveries or take a break. Your helper may not be needed then.`, data: 'Average sales per hour, last 30 days', ta: { title: 'மதியம் 2 முதல் 5 மணி வரை உங்கள் அமைதியான நேரம்', text: `இந்த நேரத்தில் விற்பனை சாதாரண நேரத்தை விட சுமார் ${h.dropPercent}% குறைவு. சரக்கு அடுக்க, வீட்டு டெலிவரி செய்ய அல்லது ஓய்வெடுக்க நல்ல நேரம். அப்போது உதவியாளர் தேவைப்படாமல் இருக்கலாம்.`, data: 'ஒரு மணி நேர சராசரி விற்பனை, கடந்த 30 நாட்கள்' } });
+  out.push({
+    id: 'quiet', icon: 'clock', title: '2 PM to 5 PM is your quiet time',
+    text: `Sales in these hours are about ${h.dropPercent}% below a normal hour. A good time to restock, do home deliveries or take a break. Your helper may not be needed then.`,
+    data: 'Average sales per hour, last 30 days',
+    ta: {
+      title: 'மதியம் 2 முதல் 5 மணி வரை உங்கள் அமைதியான நேரம்',
+      text: `இந்த நேரத்தில் விற்பனை சாதாரண நேரத்தை விட சுமார் ${h.dropPercent}% குறைவு. சரக்கு அடுக்க, வீட்டு டெலிவரி செய்ய அல்லது ஓய்வெடுக்க நல்ல நேரம். அப்போது உதவியாளர் தேவைப்படாமல் இருக்கலாம்.`,
+      data: 'ஒரு மணி நேர சராசரி விற்பனை, கடந்த 30 நாட்கள்',
+    },
+    hi: {
+      title: 'दोपहर 2 से 5 बजे तक बिक्री का शांत समय है',
+      text: `इन घंटों में बिक्री सामान्य घंटे से लगभग ${h.dropPercent}% कम रहती है। यह सामान भरने, घर पर डिलीवरी करने या थोड़ा आराम करने का अच्छा समय है। इस समय सहायक की ज़रूरत नहीं पड़ सकती।`,
+      data: 'पिछले 30 दिनों की प्रति घंटे औसत बिक्री',
+    },
+  });
 
   const fest = FESTIVALS.find((f) => f.date > today);
   if (fest) {
@@ -899,13 +966,41 @@ export function plannerInsights() {
     const last = mo.find((r) => r.month === fest.month);
     const pct = Math.round(((last.thisYear - avgMonth) / avgMonth) * 100);
     const weeks = Math.round((fest.date - today) / (7 * dayMs));
-    out.push({ id: 'festival', icon: 'calendar-days', title: `${fest.name} is in about ${weeks} weeks`, text: `Last ${fest.month} you sold ${rupee(last.thisYear)}, ${pct}% above your average month. Keep extra money ready to buy stock a couple of weeks before. What to buy is your call.`, data: 'Monthly sales, last 24 months', ta: { title: `${TA_FEST[fest.name] || fest.name} இன்னும் சுமார் ${weeks} வாரங்களில்`, text: `கடந்த ${taMon(fest.month)} மாதம் ${rupee(last.thisYear)} விற்றீர்கள், சராசரி மாதத்தை விட ${pct}% அதிகம். இரண்டு வாரம் முன்பே சரக்கு வாங்க கூடுதல் பணம் தயாராக வைத்திருங்கள். என்ன வாங்குவது என்பது உங்கள் முடிவு.`, data: 'மாத விற்பனை, கடந்த 24 மாதங்கள்' } });
+    out.push({
+      id: 'festival', icon: 'calendar-days', title: `${fest.name} is in about ${weeks} weeks`,
+      text: `Last ${fest.month} you sold ${rupee(last.thisYear)}, ${pct}% above your average month. Keep extra money ready to buy stock a couple of weeks before. What to buy is your call.`,
+      data: 'Monthly sales, last 24 months',
+      ta: {
+        title: `${TA_FEST[fest.name] || fest.name} இன்னும் சுமார் ${weeks} வாரங்களில்`,
+        text: `கடந்த ${taMon(fest.month)} மாதம் ${rupee(last.thisYear)} விற்றீர்கள், சராசரி மாதத்தை விட ${pct}% அதிகம். இரண்டு வாரம் முன்பே சரக்கு வாங்க கூடுதல் பணம் தயாராக வைத்திருங்கள். என்ன வாங்குவது என்பது உங்கள் முடிவு.`,
+        data: 'மாத விற்பனை, கடந்த 24 மாதங்கள்',
+      },
+      hi: {
+        title: `${HI_FEST[fest.name] || fest.name} लगभग ${weeks} हफ़्ते बाद है`,
+        text: `पिछले ${HI_MON[fest.month] || fest.month} में आपकी बिक्री ${rupee(last.thisYear)} रही, जो औसत महीने से ${pct}% ज़्यादा है। कुछ हफ़्ते पहले सामान खरीदने के लिए अतिरिक्त पैसे तैयार रखें। क्या खरीदना है, यह आपका फ़ैसला है।`,
+        data: 'पिछले 24 महीनों की मासिक बिक्री',
+      },
+    });
   }
 
   const regs = regularsStatus().filter((r) => r.stopped);
   if (regs.length) {
     const r = regs[0];
-    out.push({ id: 'regulars', icon: 'user-round', title: `${r.name} has not paid you in ${r.daysSince} days`, text: `${r.name} paid about every ${r.usualGap} days since ${r.since}, around ${rupee(r.avgAmount)} each time.${regs.length > 1 ? ` ${regs.slice(1).map((x) => x.name).join(', ')} also stopped.` : ''} Maybe check if everything is fine.`, data: 'Payments by the same UPI ID', ta: { title: `${r.name} ${r.daysSince} நாட்களாக பணம் செலுத்தவில்லை`, text: `${r.name} ${taMon(r.since)} முதல் சுமார் ${r.usualGap} நாட்களுக்கு ஒரு முறை, ஒவ்வொரு முறையும் சுமார் ${rupee(r.avgAmount)} செலுத்தினார்.${regs.length > 1 ? ` ${regs.slice(1).map((x) => x.name).join(', ')} அவர்களும் நிறுத்திவிட்டார்கள்.` : ''} எல்லாம் சரியாக இருக்கிறதா என்று விசாரிக்கலாம்.`, data: 'ஒரே UPI ID-யில் இருந்து வந்த பணம்' } });
+    out.push({
+      id: 'regulars', icon: 'user-round', title: `${r.name} has not paid you in ${r.daysSince} days`,
+      text: `${r.name} paid about every ${r.usualGap} days since ${r.since}, around ${rupee(r.avgAmount)} each time.${regs.length > 1 ? ` ${regs.slice(1).map((x) => x.name).join(', ')} also stopped.` : ''} Maybe check if everything is fine.`,
+      data: 'Payments by the same UPI ID',
+      ta: {
+        title: `${r.name} ${r.daysSince} நாட்களாக பணம் செலுத்தவில்லை`,
+        text: `${r.name} ${taMon(r.since)} முதல் சுமார் ${r.usualGap} நாட்களுக்கு ஒரு முறை, ஒவ்வொரு முறையும் சுமார் ${rupee(r.avgAmount)} செலுத்தினார்.${regs.length > 1 ? ` ${regs.slice(1).map((x) => x.name).join(', ')} அவர்களும் நிறுத்திவிட்டார்கள்.` : ''} எல்லாம் சரியாக இருக்கிறதா என்று விசாரிக்கலாம்.`,
+        data: 'ஒரே UPI ID-யில் இருந்து வந்த பணம்',
+      },
+      hi: {
+        title: `${r.name} ने ${r.daysSince} दिनों से भुगतान नहीं किया`,
+        text: `${r.name} ${HI_MON[r.since] || r.since} से लगभग हर ${r.usualGap} दिन में करीब ${rupee(r.avgAmount)} देते थे.${regs.length > 1 ? ` ${regs.slice(1).map((x) => x.name).join(', ')} ने भी भुगतान बंद कर दिया है।` : ''} पूछकर देखिए कि सब ठीक है।`,
+        data: 'एक ही UPI ID से आए भुगतान',
+      },
+    });
   }
 
   const d = S.history.days, n = d.length;
@@ -913,11 +1008,40 @@ export function plannerInsights() {
   const now30 = bill(n - 30, n), before30 = bill(n - 60, n - 30);
   if (now30 !== before30) {
     const down = now30 < before30;
-    out.push({ id: 'avgbill', icon: down ? 'trending-down' : 'trending-up', title: `Customers spend ${rupee(now30)} a visit, ${down ? 'down' : 'up'} from ${rupee(before30)}`, text: down ? 'The number of customers is steady, but each one buys a little less. Worth watching over the next weeks.' : 'Each customer is buying a little more per visit.', data: 'Average bill, last 30 days vs the 30 before', ta: { title: `ஒரு வாடிக்கையாளர் ஒரு முறைக்கு ${rupee(now30)} செலவிடுகிறார், முன்பு ${rupee(before30)}`, text: down ? 'வாடிக்கையாளர் எண்ணிக்கை அப்படியே இருக்கிறது, ஆனால் ஒவ்வொருவரும் கொஞ்சம் குறைவாக வாங்குகிறார்கள். அடுத்த சில வாரங்கள் கவனிக்கலாம்.' : 'ஒவ்வொரு வாடிக்கையாளரும் ஒரு முறைக்கு கொஞ்சம் அதிகமாக வாங்குகிறார்கள்.', data: 'சராசரி பில், கடந்த 30 நாட்கள், அதற்கு முந்தைய 30 நாட்களுடன்' } });
+    out.push({
+      id: 'avgbill', icon: down ? 'trending-down' : 'trending-up',
+      title: `Customers spend ${rupee(now30)} a visit, ${down ? 'down' : 'up'} from ${rupee(before30)}`,
+      text: down ? 'The number of customers is steady, but each one buys a little less. Worth watching over the next weeks.' : 'Each customer is buying a little more per visit.',
+      data: 'Average bill, last 30 days vs the 30 before',
+      ta: {
+        title: `ஒரு வாடிக்கையாளர் ஒரு முறைக்கு ${rupee(now30)} செலவிடுகிறார், முன்பு ${rupee(before30)}`,
+        text: down ? 'வாடிக்கையாளர் எண்ணிக்கை அப்படியே இருக்கிறது, ஆனால் ஒவ்வொருவரும் கொஞ்சம் குறைவாக வாங்குகிறார்கள். அடுத்த சில வாரங்கள் கவனிக்கலாம்.' : 'ஒவ்வொரு வாடிக்கையாளரும் ஒரு முறைக்கு கொஞ்சம் அதிகமாக வாங்குகிறார்கள்.',
+        data: 'சராசரி பில், கடந்த 30 நாட்கள், அதற்கு முந்தைய 30 நாட்களுடன்',
+      },
+      hi: {
+        title: `हर ग्राहक अब प्रति विज़िट ${rupee(now30)} खर्च करता है; पहले ${rupee(before30)} था`,
+        text: down ? 'ग्राहकों की संख्या स्थिर है, लेकिन हर ग्राहक थोड़ा कम खरीद रहा है। अगले कुछ हफ़्तों तक इस पर नज़र रखें।' : 'हर ग्राहक अब एक बार में थोड़ा ज़्यादा खरीद रहा है।',
+        data: 'पिछले 30 दिनों और उससे पहले के 30 दिनों का औसत बिल',
+      },
+    });
   }
 
   const p = profitSummary();
   const stock = p.costs.find((c) => c.category === 'stock');
-  if (stock) out.push({ id: 'stock', icon: 'package', title: `Stock bought this month: ${rupee(stock.amount)}`, text: `Against ${rupee(p.revenue)} sold so far this month. Based only on the bills you showed Voxa.`, data: 'Bills you showed or told Voxa', ta: { title: `இந்த மாதம் வாங்கிய சரக்கு: ${rupee(stock.amount)}`, text: `இந்த மாதம் இதுவரை ${rupee(p.revenue)} விற்பனையுடன் ஒப்பிட. நீங்கள் Voxa-விடம் சொன்ன பில்கள் மட்டும்.`, data: 'நீங்கள் காட்டிய அல்லது சொன்ன பில்கள்' } });
+  if (stock) out.push({
+    id: 'stock', icon: 'package', title: `Stock bought this month: ${rupee(stock.amount)}`,
+    text: `Against ${rupee(p.revenue)} sold so far this month. Based only on the bills you showed Voxa.`,
+    data: 'Bills you showed or told Voxa',
+    ta: {
+      title: `இந்த மாதம் வாங்கிய சரக்கு: ${rupee(stock.amount)}`,
+      text: `இந்த மாதம் இதுவரை ${rupee(p.revenue)} விற்பனையுடன் ஒப்பிட. நீங்கள் Voxa-விடம் சொன்ன பில்கள் மட்டும்.`,
+      data: 'நீங்கள் காட்டிய அல்லது சொன்ன பில்கள்',
+    },
+    hi: {
+      title: `इस महीने खरीदा सामान: ${rupee(stock.amount)}`,
+      text: `इस महीने अब तक हुई ${rupee(p.revenue)} की बिक्री के मुकाबले। यह सिर्फ़ उन बिलों पर आधारित है जो आपने Voxa को दिखाए।`,
+      data: 'आपके दिखाए या बताए बिल',
+    },
+  });
   return out;
 }

@@ -3,6 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Voxa">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
 <title>Voxa Pay for Business</title>
 <meta name="theme-color" content="#2f45d9">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -36,8 +44,21 @@
   .voxa-chat .msg { font-size: 16px; max-width: 78%; }
   .voxa-composer { padding: 14px 18px 18px; border-top: 0; }
   .voxa-composer .input { min-height: 52px; font-size: 16px; }
-  .voxa-composer .btn.icon { width: 52px; min-height: 52px; }
-  .mic.big { width: 52px; height: 52px; background: linear-gradient(135deg, var(--side-a), var(--violet)); }
+  .voxa-composer .btn.icon { width: 52px; min-height: 52px; flex: none; }
+  .mic.big { position: relative; isolation: isolate; width: 52px; height: 52px; background: linear-gradient(135deg, var(--side-a), var(--violet)); }
+  .mic.big.wait { opacity: 0.75; }
+  .input.recording { border-color: var(--bad); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15); }
+  .mic-pill { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 20px); padding: 4px 10px; border-radius: 999px; background: #fff1f1; color: var(--bad); font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .mic-pill.wait { background: var(--surface-2); color: var(--ink-3); }
+  .mic-pill::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: mic-blink 1s ease-in-out infinite; }
+  @keyframes mic-blink { 50% { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .mic-pill::before { animation: none; } }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  .mic.big.on { background: var(--bad); animation: none; }
+  .mic.big.on::before, .mic.big.on::after { content: ''; position: absolute; inset: 0; border: 2px solid var(--bad); border-radius: 50%; pointer-events: none; animation: mic-wave 1.8s ease-out infinite; }
+  .mic.big.on::after { animation-delay: 0.9s; }
+  @keyframes mic-wave { 0% { opacity: 0.8; transform: scale(1); } 100% { opacity: 0; transform: scale(1.42); } }
+  @media (prefers-reduced-motion: reduce) { .mic.big.on::before, .mic.big.on::after { animation: none; } .mic.big.on::before { inset: -4px; opacity: 0.6; } .mic.big.on::after { display: none; } }
   .voxa-empty { margin: auto; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; max-width: 46ch; padding: 30px 0; }
   .vcard { align-self: flex-start; width: min(100%, 640px); background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }
   .vcard-h { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--side-b); }
@@ -81,6 +102,15 @@
   .skill .chip { align-self: flex-start; white-space: normal; text-align: left; height: auto; padding: 6px 12px; }
   .voxa-empty { max-width: 960px; }
   .bill-thumb { display: block; width: 120px; border-radius: 8px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.4); }
+  .trend-svg { width: 100%; height: auto; display: block; }
+  .trend-legend { display: flex; justify-content: center; gap: 18px; font-size: 12px; margin: 4px 0; }
+  .trend-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .trend-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .trend-legend i.ln { width: 16px; height: 2px; background: #16a34a; border-radius: 0; }
+  .staged { display: flex; align-items: center; gap: 10px; margin: 8px 18px 0; padding: 6px 8px; border: 1px solid var(--line, #e5e7eb); border-radius: 12px; background: rgba(127,127,127,0.08); }
+  .staged.hidden { display: none; }
+  .staged img { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; }
+  .staged span { flex: 1; font-size: 13px; min-width: 0; }
   .cam { width: 52px; min-height: 52px; border-radius: 50%; cursor: pointer; }
   .plan-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
   @media (min-width: 900px) { .plan-grid { grid-template-columns: 1fr 1fr; } }
@@ -244,6 +274,53 @@
   .fact span { display: block; font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
   .fact.ok { background: var(--ok-bg); } .fact.ok svg.lucide { color: var(--ok); }
   .fact.warn { background: var(--warn-bg); } .fact.warn svg.lucide { color: var(--warn); }
+
+  /* ---------- phone ---------- */
+  .voxa-head .grow > .tiny { min-width: 0; }
+  @media (max-width: 899px) {
+    /* the Ask Voxa screen takes the phone's height; its header, chips and composer are laid out for one thumb */
+    .voxa-panel { height: calc(100dvh - 170px - env(safe-area-inset-top)); min-height: 420px; }
+    .voxa-head { padding: 10px 12px; gap: 10px; }
+    .voxa-head .dot-ico { width: 38px !important; height: 38px !important; flex: none; }
+    .voxa-head .grow { min-width: 0; }
+    #aiMode { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .voxa-head .btn.sm span { display: none; }
+    .voxa-head .btn.sm { padding: 0; width: 42px; min-height: 42px; }
+    .voxa-chat { padding: 12px; gap: 10px; }
+    .voxa-chat .msg { max-width: 90%; font-size: 15px; }
+    .voxa-chat .src { flex-wrap: wrap; row-gap: 4px; }
+    #quickQs { padding: 8px 12px 0 !important; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    #quickQs::-webkit-scrollbar { display: none; }
+    #quickQs .chip { flex: none; }
+    /* text box on its own full-width row; mic, camera, upload and send underneath */
+    .voxa-composer { flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); }
+    .voxa-composer .draft-wrap { order: -1; flex: 1 0 100%; }
+    .voxa-composer .input { min-height: 48px; }
+    .voxa-composer #send { margin-left: auto; }
+    .mic.big, .voxa-composer .btn.icon { width: 48px; height: 48px; min-height: 48px; }
+    .upload-btn { min-height: 48px; }
+    .save-note { min-height: 38px; padding: 6px 10px; }
+    .pick { min-height: 44px; }
+    .style-switch button { min-height: 38px; padding: 6px 14px; }
+    /* on a phone the chat is the whole screen: no page title or report button above it */
+    body.pane-voxa .page-head { display: none; }
+    body.pane-voxa .voxa-panel { height: calc(100dvh - 60px - 2 * env(safe-area-inset-top) - 24px); }
+  }
+  @media (max-width: 360px) {
+    .upload-btn span { display: none; }
+    .upload-btn { width: 48px; padding: 0; }
+  }
+  @media (max-width: 640px) {
+    body.voxa-docked [data-pane="voxa"] { top: calc(60px + env(safe-area-inset-top)); }
+    .fab { right: 14px; bottom: calc(16px + env(safe-area-inset-bottom)); min-height: 52px; }
+    .fab span, .fab { white-space: nowrap; }
+    .loan-inputs { gap: 14px; }
+    .words .word { font-size: 15px; }
+    .vcard { padding: 12px; }
+    .mini-time { margin-left: 0; }
+    .crm-sub { padding-left: 10px; }
+    .table-wrap, .pay-scroll { -webkit-overflow-scrolling: touch; }
+  }
 </style>
 </head>
 <body data-role="merchant">
@@ -400,11 +477,12 @@
       <div class="chat-list hidden" id="chatList"></div>
       <div class="chat voxa-chat" id="chat" aria-live="polite" data-noi18n></div>
       <div class="chips" id="quickQs" style="padding:10px 18px 0"></div>
+      <div class="staged hidden" id="staged"><img id="stagedImg" alt=""><span id="stagedText" data-noi18n></span><button class="btn icon quiet" id="stagedX" type="button" aria-label="Remove photo"><i data-lucide="x"></i></button></div>
       <div class="composer voxa-composer">
-        <button class="mic big" id="mic" aria-label="Speak to Voxa"><i data-lucide="mic"></i></button>
+        <button class="mic big" id="mic" aria-label="Speak to Voxa" aria-pressed="false" type="button"><i data-lucide="mic"></i></button><span class="sr-only" id="micStatus" role="status" aria-live="polite"></span>
         <label class="btn icon cam" title="Take a photo of a bill" aria-label="Take a photo of a bill"><i data-lucide="camera"></i><input type="file" id="billFile" accept="image/*" capture="environment" hidden></label>
         <label class="btn upload-btn" title="Upload a bill photo from your phone or computer"><i data-lucide="paperclip"></i><span>Upload</span><input type="file" accept="image/*" hidden data-billpick></label>
-        <div class="draft-wrap"><input class="input" id="chatInput" placeholder="Speak or type in Tamil, Hindi or English…"><button class="draft-clear hidden" id="clearDraft" type="button" aria-label="Clear the text" title="Clear"><i data-lucide="x"></i></button></div>
+        <div class="draft-wrap"><input class="input" id="chatInput" placeholder="Speak or type in Tamil, Hindi or English…"><span class="mic-pill hidden" id="micPill" data-noi18n aria-hidden="true"></span><button class="draft-clear hidden" id="clearDraft" type="button" aria-label="Clear the text" title="Clear"><i data-lucide="x"></i></button></div>
         <button class="btn primary icon" id="send" aria-label="Send"><i data-lucide="arrow-up"></i></button>
       </div>
     </div>
@@ -419,7 +497,7 @@
   <!-- WHATSAPP: Murugan chats with Voxa from his phone; his updates -->
   <section data-pane="whatsapp" class="stack hidden" style="gap:20px" id="waPane"></section>
 
-  <!-- CUSTOMERS: WhatsApp list, loyalty card, Kanakku -->
+  <!-- CUSTOMERS: WhatsApp list, loyalty card, Udhaar -->
   <section data-pane="customers" class="stack hidden" style="gap:20px" id="customersPane"></section>
 </main>
 
@@ -427,14 +505,14 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="/vendor/lucide.js"></script>
-<script src="/js/common.js"></script>
+<script src="/js/common.js?v=mobile-1"></script>
 <script src="/js/tamil.js"></script>
 <script>
 const { inr, esc, $, $$, i, icons, api, subscribe, badge, route, ago, time, toast, speak, listen } = V;
 let S = null, pane = 'dashboard', soundOn = true, seen = null, busy = false, period = '7', earnP = 'today';
 let loanIn = { amount: 150000, months: 12, extra: 0, rate: null }, lp = null, prof = null, loanView = 'mine';
 
-const PANES = { whatsapp: 'WhatsApp', customers: 'Customers & Kanakku', dashboard: 'Dashboard overview', payments: 'Payments', insights: 'Sales insights', loan: 'Loan', voxa: 'Ask Voxa', costs: 'Costs & profit', notes: 'Voxa notes' };
+const PANES = { whatsapp: 'WhatsApp', customers: 'Customers & Udhaar', dashboard: 'Dashboard overview', payments: 'Payments', insights: 'Sales insights', loan: 'Loan', voxa: 'Ask Voxa', costs: 'Costs & profit', notes: 'Voxa notes' };
 V.sections = [
   { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
   { id: 'payments', label: 'Payments', icon: 'arrow-left-right', count: 0 },
@@ -442,7 +520,7 @@ V.sections = [
   { id: 'loan', label: 'Loan', icon: 'hand-coins' },
   { id: 'costs', label: 'Costs & profit', icon: 'piggy-bank' },
   { id: 'notes', label: 'Voxa notes', icon: 'notebook-pen', count: 0 },
-  { id: 'customers', label: 'Customers & Kanakku', icon: 'users', count: 0 },
+  { id: 'customers', label: 'Customers & Udhaar', icon: 'users', count: 0 },
   { id: 'whatsapp', label: 'WhatsApp', icon: 'message-circle' },
   { id: 'voxa', label: 'Ask Voxa', icon: 'mic' },
 ];
@@ -459,6 +537,7 @@ V.onSection = (id) => {
   if (id === 'whatsapp' && S) renderWhatsapp();
   if (id === 'costs' && S) renderCosts();
   if (id === 'voxa') { renderChat(); setTimeout(() => $('#chatInput').focus({ preventScroll: true }), 50); }
+  document.body.classList.toggle('pane-voxa', id === 'voxa');
   $('#fab').classList.toggle('hidden', id === 'voxa');
   window.scrollTo({ top: 0 });
 };
@@ -610,29 +689,46 @@ function looksLikeBill(source) {
   return { ok, reason, ...Object.fromEntries(Object.entries(p).map(([k, v]) => [k, Math.round(v * 1000) / 1000])) };
 }
 
-async function sendBill(source, sample) {
-  if (busy) return;
+// A chosen photo is only staged; it is sent with the typed message when he presses Send.
+let staged = null;
+function showStaged() {
+  const el = $('#staged');
+  if (!staged) { el.classList.add('hidden'); return; }
+  $('#stagedImg').src = staged.thumb;
+  $('#stagedText').textContent = { en: 'Photo ready (bill or payment screenshot). Add a message, then press Send.', ta: 'படம் தயார் (பில் அல்லது பேமெண்ட் ஸ்கிரீன்ஷாட்). செய்தி சேர்த்து Send அழுத்துங்கள்.', hi: 'फ़ोटो तैयार (बिल या पेमेंट स्क्रीनशॉट)। संदेश लिखकर Send दबाएँ।' }[S.merchant.lang] || 'Photo ready.';
+  el.classList.remove('hidden');
+  V.icons();
+}
+function stageBill(source, sample) {
   const check = sample ? { ok: true, reason: 'sample bill' } : looksLikeBill(source);
-  if (!check.ok) {
-    const say = { en: `That does not look like a bill (${check.reason}), so I did not send it. Please take a photo of a printed bill only.`, ta: 'இது பில் போல் தெரியவில்லை, அதனால் அனுப்பவில்லை. அச்சிட்ட பில்லின் படத்தை மட்டும் எடுங்கள்.', hi: 'यह बिल जैसा नहीं लगता, इसलिए नहीं भेजा। सिर्फ़ छपे बिल की फ़ोटो लें।' }[S.merchant.lang] || '';
+  // only photos of people are stopped on the phone; the AI tells bills and payment screenshots apart from other images
+  if (!check.ok && check.reason === 'looks like a person') {
+    const say = { en: 'That looks like a photo of a person, so I did not attach it. Please send a bill or a payment screenshot.', ta: 'இது ஒரு நபரின் படம் போல் தெரிகிறது, அதனால் இணைக்கவில்லை. பில் அல்லது பேமெண்ட் ஸ்கிரீன்ஷாட்டை அனுப்புங்கள்.', hi: 'यह किसी व्यक्ति की फ़ोटो लगती है, इसलिए नहीं जोड़ा। बिल या पेमेंट स्क्रीनशॉट भेजें।' }[S.merchant.lang] || '';
     toast(say);
     if (soundOn) speak(say, S.merchant.lang);
     return;
   }
+  staged = { image: toJpeg(source, 1280), thumb: toJpeg(source, 160), sample, check };
+  showStaged();
+  $('#chatInput').focus({ preventScroll: true });
+}
+$('#stagedX').onclick = () => { staged = null; showStaged(); };
+
+async function sendBill(st, text) {
+  if (busy) return;
   busy = true; renderChat();
   try {
-    const image = toJpeg(source, 1280), thumb = toJpeg(source, 160);
-    const r = await api('/api/merchant/bill', { image, mediaType: 'image/jpeg', sample, thumb, check, lang: S.merchant.lang });
+    const r = await api('/api/merchant/bill', { image: st.image, mediaType: 'image/jpeg', sample: st.sample, thumb: st.thumb, check: st.check, lang: S.merchant.lang, text });
     speak(r.reply, S.merchant.lang, 'bill');
   } catch (e) {} finally { busy = false; renderChat(); }
 }
-document.addEventListener('click', (e) => { const b = e.target.closest('[data-bill]'); if (b) { if (pane !== 'voxa') openVoxa(); sendBill(drawBill(b.dataset.bill), b.dataset.bill); } });
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-bill]'); if (b) { if (pane !== 'voxa') openVoxa(); stageBill(drawBill(b.dataset.bill), b.dataset.bill); } });
 document.addEventListener('change', (e) => {
   if (!e.target.matches('[data-billpick]')) return;
   const f = e.target.files && e.target.files[0];
   if (!f) return;
   const img = new Image();
-  img.onload = () => { openVoxa(); sendBill(img, null); URL.revokeObjectURL(img.src); };
+  img.onload = () => { openVoxa(); stageBill(img, null); URL.revokeObjectURL(img.src); };
   img.src = URL.createObjectURL(f);
   e.target.value = '';
 });
@@ -640,7 +736,7 @@ $('#billFile').addEventListener('change', (e) => {
   const f = e.target.files && e.target.files[0];
   if (!f) return;
   const img = new Image();
-  img.onload = () => { sendBill(img, null); URL.revokeObjectURL(img.src); };
+  img.onload = () => { stageBill(img, null); URL.revokeObjectURL(img.src); };
   img.src = URL.createObjectURL(f);
   e.target.value = '';
 });
@@ -651,12 +747,16 @@ async function ask(text, opts = {}) {
   text = (text || '').trim();
   if (!text || busy) return;
   busy = true; $('#chatInput').value = ''; $('#send').disabled = true; renderChat();
-  const lang = HEARD[opts.heard] || S.merchant.lang;
-  try { const r = await api('/api/merchant/chat', { text, lang }); speak(r.reply, r.lang || lang, r.at ? 'm' + r.at : 'reply'); }
+  const heard = HEARD[opts.heard];
+  try { const r = await api('/api/merchant/chat', { text, heard }); speak(r.reply, r.lang || S.merchant.lang, r.at ? 'm' + r.at : 'reply'); }
   catch (e) {} finally { busy = false; $('#send').disabled = false; renderChat(); }
 }
 let voiceDraft = null; // set when the text in the box came from speech: then Voxa answers aloud, in that language
-const sendBox = () => { const d = voiceDraft; voiceDraft = null; $('#chatInput').classList.remove('from-voice'); $('#clearDraft').classList.add('hidden'); ask($('#chatInput').value, d ? { voice: true, heard: d.heard } : {}); };
+const sendBox = () => {
+  const d = voiceDraft; voiceDraft = null; $('#chatInput').classList.remove('from-voice'); $('#clearDraft').classList.add('hidden');
+  if (staged) { if (busy) return; const st = staged, text = $('#chatInput').value.trim(); staged = null; showStaged(); $('#chatInput').value = ''; sendBill(st, text); return; }
+  ask($('#chatInput').value, d ? { voice: true, heard: d.heard } : {});
+};
 $('#send').onclick = sendBox;
 $('#chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendBox(); });
 $('#chatInput').addEventListener('input', (e) => { if (!e.target.value) { voiceDraft = null; e.target.classList.remove('from-voice'); $('#clearDraft').classList.add('hidden'); } });
@@ -677,11 +777,39 @@ $('#chat').addEventListener('click', (e) => {
   b.disabled = true;
   api('/api/merchant/chat/savenote', { index: Number(b.dataset.savenote) }).then(() => toast('Saved to Voxa notes.')).catch(() => (b.disabled = false));
 });
-let rec = null;
+let rec = null, micWatch = null;
+function setMicState(state) {
+  const lang = S?.merchant.lang || 'en';
+  const labels = {
+    en: { idle: 'Speak to Voxa', pending: 'Allow the microphone…', recording: 'Recording… tap mic to stop', processing: 'Transcribing…' },
+    ta: { idle: 'Voxa-விடம் பேசுங்கள்', pending: 'மைக்ரோஃபோனை அனுமதியுங்கள்…', recording: 'பதிவாகிறது… நிறுத்த மைக்கை அழுத்துங்கள்', processing: 'உரையாக மாற்றுகிறது…' },
+    hi: { idle: 'Voxa से बोलें', pending: 'माइक्रोफ़ोन की अनुमति दें…', recording: 'रिकॉर्डिंग… रोकने के लिए माइक दबाएँ', processing: 'लिखा जा रहा है…' },
+  };
+  const text = labels[lang] || labels.en;
+  const mic = $('#mic'), pill = $('#micPill');
+  mic.classList.toggle('on', state === 'recording');
+  mic.classList.toggle('wait', state === 'pending' || state === 'processing');
+  mic.setAttribute('aria-pressed', String(state === 'recording'));
+  mic.setAttribute('aria-label', text[state]);
+  mic.disabled = state === 'processing';
+  $('#chatInput').classList.toggle('recording', state === 'recording');
+  pill.textContent = state === 'idle' ? '' : text[state];
+  pill.classList.toggle('hidden', state === 'idle');
+  pill.classList.toggle('wait', state !== 'recording');
+  $('#micStatus').textContent = state === 'idle' ? '' : text[state];
+  clearTimeout(micWatch);
+  // if the browser never answers the permission prompt, do not leave the mic stuck
+  if (state === 'pending') micWatch = setTimeout(() => {
+    if (!rec) return;
+    toast({ en: 'The microphone did not start. Allow microphone access for this page (lock icon in the address bar), then try again.', ta: 'மைக்ரோஃபோன் தொடங்கவில்லை. முகவரிப் பட்டியில் உள்ள பூட்டு குறியில் மைக்ரோஃபோனை அனுமதித்து மீண்டும் முயலுங்கள்.', hi: 'माइक्रोफ़ोन शुरू नहीं हुआ। पता-पट्टी के लॉक आइकन से इस पेज के लिए माइक्रोफ़ोन की अनुमति दें, फिर दोबारा कोशिश करें।' }[lang] || 'The microphone did not start.');
+    rec.stop();
+  }, 12000);
+}
 $('#mic').onclick = () => {
   if (rec) { rec.stop(); return; }
-  $('#mic').classList.add('on');
-  rec = listen(S.merchant.lang, (t, heard) => {
+  setMicState('pending');
+  let ended = false;
+  const r = listen(S.merchant.lang, (t, heard) => {
     // what he said is typed into the box first; he can fix it, send it, or clear it
     const box = $('#chatInput');
     box.value = (box.value ? box.value + ' ' : '') + t;
@@ -690,7 +818,9 @@ $('#mic').onclick = () => {
     box.classList.add('from-voice');
     $('#clearDraft').classList.remove('hidden');
     toast({ en: 'Check the text, then press send.', ta: 'உரையைச் சரிபார்த்து, அனுப்பு அழுத்துங்கள்.', hi: 'टेक्स्ट जाँचें, फिर भेजें दबाएँ।' }[S.merchant.lang] || 'Check the text, then press send.');
-  }, () => { rec = null; $('#mic').classList.remove('on'); });
+  }, () => { ended = true; rec = null; setMicState('idle'); }, (recording) => setMicState(recording ? 'recording' : 'processing'));
+  // listen() can end before it returns (mic blocked, unsupported): only keep the handle while it is live
+  if (!ended) rec = r;
 };
 $('#quickQs').addEventListener('click', (e) => { const b = e.target.closest('[data-q]'); if (b) ask(b.dataset.q); });
 
@@ -777,7 +907,7 @@ function plannerHTML(list, compact) {
   if (!list.length) return '<div class="small muted">No suggestions yet.</div>';
   return `<div class="plan-grid ${compact ? 'compact' : ''}">${list.map((x) => `
     <div class="plan-item"><div class="dot-ico ${PLAN_TONE[x.id] || ''}">${i(x.icon)}</div>
-      <div data-noi18n>${(() => { const y = S && S.merchant.lang === 'ta' && x.ta ? x.ta : x; return `<b>${esc(y.title)}</b>${compact ? '' : `<p>${esc(y.text)}</p><span>${y === x ? 'Based on' : 'அடிப்படை'}: ${esc(y.data)}</span>`}`; })()}</div></div>`).join('')}</div>`;
+      <div data-noi18n>${(() => { const lang = S && S.merchant.lang; const y = lang === 'ta' && x.ta ? x.ta : lang === 'hi' && x.hi ? x.hi : x; const basis = lang === 'ta' ? 'அடிப்படை' : lang === 'hi' ? 'आधार' : 'Based on'; return `<b>${esc(y.title)}</b>${compact ? '' : `<p>${esc(y.text)}</p><span>${basis}: ${esc(y.data)}</span>`}`; })()}</div></div>`).join('')}</div>`;
 }
 
 // ---------- Insights: KPI cards, chart and Voxa tip all follow the period filter ----------
@@ -799,12 +929,24 @@ function renderInsights() {
   $('#insTitle').textContent = m.unit === 'month' ? `Monthly sales, this year vs last year` : m.unit === 'week' ? 'Weekly sales, last 13 weeks vs the 13 before' : `Daily sales, ${m.name.toLowerCase()} vs the ${m.days} days before`;
   $('#insSub').textContent = `Each ${unitName} shows two bars: the earlier period in cyan, then ${m.name.toLowerCase()} in blue. Best ${unitName} is marked green, weakest amber. Hover a bar for the exact amount.`;
   const TA = S.merchant.lang === 'ta';
-  const taName = (window.VT && VT.tr(m.name)) || m.name;
+  const HI = S.merchant.lang === 'hi';
+  const taName = (window.VT && VT.tr(m.name, 'ta')) || m.name;
+  const hiName = (window.VT && VT.tr(m.name, 'hi')) || m.name;
   if (TA) {
     const each = { day: 'ஒவ்வொரு நாளும்', week: 'ஒவ்வொரு வாரமும்', month: 'ஒவ்வொரு மாதமும்' }[m.unit];
     const one = { day: 'நாள்', week: 'வாரம்', month: 'மாதம்' }[m.unit];
     $('#insTitle').textContent = m.unit === 'month' ? 'மாத விற்பனை: இந்த ஆண்டு, கடந்த ஆண்டுடன்' : m.unit === 'week' ? 'வார விற்பனை: கடந்த 13 வாரங்கள், அதற்கு முந்தைய 13 வாரங்களுடன்' : `தினசரி விற்பனை: ${taName}, அதற்கு முந்தைய ${m.days} நாட்களுடன்`;
     $('#insSub').textContent = `${each} இரண்டு கம்பங்கள்: முந்தைய காலம் வெளிர் நீலத்தில், ${taName} அடர் நீலத்தில். சிறந்த ${one} பச்சையில், குறைந்த ${one} மஞ்சளில். சரியான தொகையைப் பார்க்க கம்பத்தின் மேல் வையுங்கள்.`;
+  }
+  if (HI) {
+    const each = { day: 'हर दिन', week: 'हर हफ़्ते', month: 'हर महीने' }[m.unit];
+    const one = { day: 'दिन', week: 'हफ़्ता', month: 'महीना' }[m.unit];
+    $('#insTitle').textContent = m.unit === 'month'
+      ? 'महीने की बिक्री: इस साल और पिछले साल'
+      : m.unit === 'week'
+        ? 'साप्ताहिक बिक्री: पिछले 13 हफ़्ते और उससे पहले के 13 हफ़्ते'
+        : `रोज़ की बिक्री: ${hiName}, उससे पहले के ${m.days} दिनों के मुकाबले`;
+    $('#insSub').textContent = `${each} दो बार दिखते हैं: पिछली अवधि हल्के नीले में और ${hiName} गहरे नीले में। सबसे अच्छा ${one} हरे और सबसे कम बिक्री वाला पीले रंग में है। सही रकम देखने के लिए बार पर जाएँ।`;
   }
   $('#insLegend').innerHTML = `<span><i style="background:#4fd1e8"></i>${esc(m.prevLabel)}</span><span><i style="background:#2f45d9"></i>${esc(m.curLabel)}</span>`;
   drawOnce('insChart', m.key + m.total, groupedChart(m));
@@ -848,6 +990,24 @@ function renderInsights() {
       const slowWd = avgWd.reduce((a, b) => (b.avg < a.avg ? b : a)), bestWd = avgWd.reduce((a, b) => (b.avg > a.avg ? b : a));
       title = `${slowWd.wd}யும் மதியம் 2–5 மணியும் உங்கள் அமைதியான நேரம்`;
       body = `${esc(taName)}ல், ${bestWd.wd} அதிகம் விற்றது (தினமும் ${inr(bestWd.avg)}), <b>${slowWd.wd} குறைவு (${inr(slowWd.avg)})</b>. உங்கள் சிறந்த ${m.unit === 'week' ? 'வாரம்' : 'நாள்'}: ${esc(d(m.best.full))}, ${inr(m.best.cur)}. மதியம் 2 முதல் 5 மணி வரை விற்பனை சாதாரண நேரத்தை விட சுமார் <b>${drop}% குறைவு</b>: ${inr(slowH)}, சாதாரணமாக ${inr(hrAvg)}. சரக்கு அடுக்க அல்லது டெலிவரி செய்ய நல்ல நேரம்.`;
+    }
+  }
+  if (HI) {
+    const WD = { Sunday: 'रविवार', Monday: 'सोमवार', Tuesday: 'मंगलवार', Wednesday: 'बुधवार', Thursday: 'गुरुवार', Friday: 'शुक्रवार', Saturday: 'शनिवार' };
+    const MO = { Jan: 'जनवरी', Feb: 'फ़रवरी', Mar: 'मार्च', Apr: 'अप्रैल', May: 'मई', Jun: 'जून', Jul: 'जुलाई', Aug: 'अगस्त', Sep: 'सितंबर', Oct: 'अक्टूबर', Nov: 'नवंबर', Dec: 'दिसंबर' };
+    const d = (s) => (window.VT && VT.tr(s, 'hi')) || s;
+    if (m.unit === 'month') {
+      const above = Math.round(((m.best.cur - m.avgGroup) / m.avgGroup) * 100), below = Math.round(((m.avgGroup - m.worst.cur) / m.avgGroup) * 100);
+      title = `${MO[m.worst.month] || m.worst.month} सबसे कम बिक्री वाला महीना है और ${MO[m.best.month] || m.best.month} सबसे अच्छा` ;
+      body = `${d(m.name)} में <b>${esc(d(m.best.full))}</b> को ${inr(m.best.cur)} की बिक्री हुई, जो औसत महीने से <b>${above}% ज़्यादा</b> है; <b>${esc(d(m.worst.full))}</b> को ${inr(m.worst.cur)} की बिक्री हुई, जो <b>${below}% कम</b> है। पिछले साल के इन्हीं महीनों के मुकाबले बिक्री ${Math.abs(m.change)}% ${up ? 'बढ़ी' : 'घटी'}। त्योहारों से पहले सामान खरीदने के लिए पैसे तैयार रखें। रोज़ दोपहर 2 से 5 बजे तक बिक्री सबसे कम रहती है।`;
+    } else {
+      const byWd = {};
+      S.history.days.slice(-Math.min(m.days, 91)).forEach((x) => { const wd = new Date(x.date).getDay(); (byWd[wd] = byWd[wd] || []).push(x.total); });
+      const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const avgWd = Object.entries(byWd).map(([wd, v]) => ({ wd: WD[names[wd]], avg: v.reduce((a, b) => a + b, 0) / v.length }));
+      const slowWd = avgWd.reduce((a, b) => (b.avg < a.avg ? b : a)), bestWd = avgWd.reduce((a, b) => (b.avg > a.avg ? b : a));
+      title = `${slowWd.wd} और दोपहर 2–5 बजे बिक्री का शांत समय है`;
+      body = `${d(m.name)} में ${bestWd.wd} को सबसे ज़्यादा (${inr(bestWd.avg)} रोज़) और <b>${slowWd.wd} को सबसे कम (${inr(slowWd.avg)})</b> बिक्री हुई। आपका सबसे अच्छा ${m.unit === 'week' ? 'हफ़्ता' : 'दिन'} ${esc(d(m.best.full))} था: ${inr(m.best.cur)}। दोपहर 2 से 5 बजे तक बिक्री सामान्य घंटे से लगभग <b>${drop}% कम</b> है: ${inr(slowH)}, जबकि सामान्य औसत ${inr(hrAvg)} है। यह सामान भरने या डिलीवरी करने का अच्छा समय है।`;
     }
   }
   $('#insightCard').innerHTML = `
@@ -1150,7 +1310,7 @@ function renderMine() {
 // ---------- Voxa notes: only Voxa writes here ----------
 const NOTE_ICON = { dashboard: 'chart-column', loan: 'hand-coins', costs: 'piggy-bank', payment: 'hourglass', done: 'circle-check', note: 'pin', info: 'info' };
 const NOTE_TONE = { dashboard: 'ai', loan: 'ai', costs: 'ai', payment: 'warn', done: 'ok', note: 'info', info: 'info' };
-// ---------- Customers & Kanakku: people who joined on WhatsApp ----------
+// ---------- Customers & Udhaar: people who joined on WhatsApp ----------
 let crmCfg = null;
 V.ready().then((c) => { crmCfg = c.whatsapp || { live: false }; if (pane === 'customers') renderCustomers(); });
 const maskPhone = (p) => (p ? p.slice(0, 3) + ' ••••• ' + p.slice(-4) : '');
@@ -1159,7 +1319,7 @@ const loyN = (cu) => cu.visits.filter((d) => d > (cu.cardResetOn || '')).length;
 const visits30 = (cu) => cu.visits.filter((d) => Date.now() - new Date(d).getTime() < 30 * 86400000).length;
 const lastVisit = (cu) => (cu.visits.length ? [...cu.visits].sort().pop() : '');
 const fmtVisit = (d) => { const days = Math.round((new Date(new Date().toDateString()) - new Date(d)) / 86400000); return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days + ' days ago'; };
-let crmOpen = null; // customer id whose Kanakku form is open
+let crmOpen = null; // customer id whose Udhaar form is open
 // the shop's WhatsApp, linked like WhatsApp Web
 function linkedBox(l) {
   if (l.status === 'connected') return `<div class="note-plain ok small row between"><span>${i('check')} Linked to <b>${esc(l.me || '')}</b>. Customers message this number.</span><button class="btn sm" data-crm="unlink">Unlink</button></div>`;
@@ -1171,7 +1331,7 @@ let crmTab = 'customers';
 function ownerHTML() {
   const c = S.crm, st = c.settings, tg = crmCfg && crmCfg.provider === 'telegram';
   const ownerLink = tg && crmCfg.bot && crmCfg.ownerCode ? `https://t.me/${crmCfg.bot}?start=${crmCfg.ownerCode}` : '';
-  const tog = (k, label) => `<label class="tg"><input type="checkbox" data-crmset="${k}" ${st[k] ? 'checked' : ''}><span></span>${label}</label>`;
+  const tog = (k, label) => `<label class="tg"><input type="checkbox" data-crmset="${k}" ${(k === 'loyaltyAlerts' ? st[k] !== false : st[k]) ? 'checked' : ''}><span></span>${label}</label>`;
   const log = c.ownerLog || [];
   return `
     <div class="crm-top">
@@ -1180,7 +1340,7 @@ function ownerHTML() {
         <label class="small strong">Your number</label>
         <div class="row" style="gap:8px"><input class="input" id="merchPhone" placeholder="+91 98765 43210" value="${esc(st.merchantPhone || '')}" style="flex:1"><button class="btn" id="savePhone">Save</button></div>
         ${c.ownerChatId ? `<p class="small">Linked to <b>${esc(c.ownerName || 'Murugan')}</b>'s phone. Ask from the chat, for example:</p>
-          <ul class="small wa-tips"><li>"How were sales this week?"</li><li>"Any stuck payments?"</li><li>"Who owes me money?"</li><li>"Can I give Suresh 2000 credit?"</li><li>Reply <b>CONFIRM</b> when a customer pays back their kanakku</li></ul>
+          <ul class="small wa-tips"><li>"How were sales this week?"</li><li>"Any stuck payments?"</li><li>"Who owes me money?"</li><li>"Can I give Suresh 2000 credit?"</li><li>Reply <b>CONFIRM</b> when a customer pays back their Udhaar</li></ul>
           <div><button class="btn sm" data-crm="unlinkOwner">Unlink my phone</button></div>`
         : ownerLink ? `<div class="link-box"><div id="ownerQr"></div><div class="small"><b>Link your phone</b><ol><li>Scan this QR with <b>your</b> phone camera</li><li>Tap <b>Start</b> in the chat</li><li>Or tap <b>Share my phone number</b>: if it matches the number above, you are linked</li></ol><div class="tiny muted">Only Murugan should scan this one.</div></div></div>`
         : '<div class="note-plain warn small">The chat is not connected yet.</div>'}
@@ -1191,7 +1351,8 @@ function ownerHTML() {
         <div class="crm-sub ${st.enabled ? '' : 'off'}">
           ${tog('dailySummary', 'Daily summary at')} <input type="time" class="input mini-time" id="sumTime" value="${esc(st.summaryTime)}">
           ${tog('stuckAlerts', 'Stuck payment alerts')}
-          ${tog('udharAlerts', 'Kanakku: paid-back requests to confirm')}
+          ${tog('loyaltyAlerts', 'Offer to add new payers to the loyalty programme')}
+          ${tog('udharAlerts', 'Udhaar: paid-back requests to confirm')}
         </div>
         <div class="row wrap" style="gap:8px"><button class="btn sm" data-crm="test">${i('send')}Send a test message</button><button class="btn sm" data-crm="summary">${i('newspaper')}Send today's update now</button></div>
       </div></div>
@@ -1213,12 +1374,12 @@ function renderWhatsapp() {
     <div class="kpis four">
       <div class="kpi"><div class="l">Channel</div><div class="v" style="font-size:20px">${live ? 'Connected' : 'Off'}</div><div class="d">${i('message-circle')}${tg && crmCfg.bot ? '@' + esc(crmCfg.bot) : 'WhatsApp'}</div></div>
       <div class="kpi"><div class="l">Customers on the list</div><div class="v">${c.customers.length}</div><div class="d">${i('users')}joined by scanning the poster</div></div>
-      <div class="kpi"><div class="l">Messages sent today</div><div class="v">${sentToday}</div><div class="d">${i('send')}cards, Kanakku, replies</div></div>
+      <div class="kpi"><div class="l">Messages sent today</div><div class="v">${sentToday}</div><div class="d">${i('send')}cards, Udhaar, replies</div></div>
       <div class="kpi"><div class="l">Not delivered</div><div class="v ${failed ? 'down' : ''}">${failed}</div><div class="d">${i('triangle-alert')}see the log below</div></div>
     </div>
     <div class="panel wa-panel"><div class="panel-body stack" style="gap:10px">
       <h2 class="card-title">${i('message-circle')} How customers reach Murugan and Co</h2>
-      <ol class="small wa-tips"><li>They scan the <b>Smart QR poster</b> at the counter (Customers & Kanakku).</li><li>They tap Start / Send: they join the loyalty card and Kanakku updates.</li><li>After every payment they get their card; Kanakku balances and confirmations come here too.</li><li>They can reply CARD, BALANCE, PAID 500 or STOP (STOP deletes their data).</li></ol>
+      <ol class="small wa-tips"><li>They scan the <b>Smart QR poster</b> at the counter (Customers & Udhaar).</li><li>They tap Start / Send: they join the loyalty card and Udhaar updates.</li><li>After every payment they get their card; Udhaar balances and confirmations come here too.</li><li>They can reply CARD, BALANCE, PAID 500 or STOP (STOP deletes their data).</li></ol>
       <div><button class="btn sm" data-act="goto" data-id="customers">${i('arrow-right')}Open the poster</button></div>
     </div></div>
     <details class="panel" open><summary class="panel-head" style="cursor:pointer"><h2>Delivery log</h2><span class="hint">what was sent and whether it went through</span></summary>
@@ -1254,7 +1415,7 @@ function renderCustomers() {
   const tgBot = crmCfg && crmCfg.provider === 'telegram' ? crmCfg.bot : '';
   const waLink = tgBot ? `https://t.me/${tgBot}?start=${encodeURIComponent(crmCfg.shopCode || 'join')}` : live && shopNum ? `https://wa.me/${shopNum.replace(/\D/g, '')}?text=${encodeURIComponent(crmCfg.joinText)}` : '';
   const waiting = c.customers.flatMap((cu) => cu.udhar.filter((e) => e.status === 'pending').map((e) => ({ cu, e })));
-  const tog = (k, label) => `<label class="tg"><input type="checkbox" data-crmset="${k}" ${st[k] ? 'checked' : ''}><span></span>${label}</label>`;
+  const tog = (k, label) => `<label class="tg"><input type="checkbox" data-crmset="${k}" ${(k === 'loyaltyAlerts' ? st[k] !== false : st[k]) ? 'checked' : ''}><span></span>${label}</label>`;
   $('#customersPane').innerHTML = tabs + `
     <div class="crm-top">
       <div class="panel loy-panel"><div class="panel-body stack" style="gap:12px">
@@ -1271,7 +1432,7 @@ function renderCustomers() {
         <h2 class="card-title" style="align-self:flex-start">${i('qr-code')} Smart QR poster for your counter</h2>
         <div class="poster">
           <div class="poster-h">Murugan and Co</div>
-          <div class="poster-s">Scan · tap ${tgBot ? 'Start' : 'Send'} · get your ${c.loyaltyDays || 7}-visit rewards card and Kanakku updates on your phone</div>
+          <div class="poster-s">Scan · tap ${tgBot ? 'Start' : 'Send'} · get your ${c.loyaltyDays || 7}-visit rewards card and Udhaar updates on your phone</div>
           <div id="joinQr" class="poster-qr">${live ? '' : '<div class="muted small" style="padding:40px 10px">QR appears once WhatsApp is connected</div>'}</div>
           <div class="poster-f">Reward after ${c.loyaltyDays || 7} visits: <b>${esc(c.reward)}</b> · Send STOP any time to leave</div>
         </div>
@@ -1285,7 +1446,7 @@ function renderCustomers() {
 
     <div class="panel">
       <div class="panel-head"><h2>Your regular customers</h2><span class="hint">most regular first</span><span class="tag">${c.customers.length}</span></div>
-      ${c.customers.length ? `<div class="table-wrap" style="border-radius:0 0 14px 14px;margin-top:8px"><table class="table crm-table"><thead><tr><th>Customer</th><th class="r">Visits (30 days)</th><th>Last visit</th><th>Loyalty card</th><th class="r">Kanakku due</th><th>Credit check</th><th></th></tr></thead><tbody>${[...c.customers].sort((a, b) => visits30(b) - visits30(a) || lastVisit(b).localeCompare(lastVisit(a))).map((cu) => {
+      ${c.customers.length ? `<div class="table-wrap" style="border-radius:0 0 14px 14px;margin-top:8px"><table class="table crm-table"><thead><tr><th>Customer</th><th class="r">Visits (30 days)</th><th>Last visit</th><th>Loyalty card</th><th class="r">Udhaar due</th><th>Credit check</th><th></th></tr></thead><tbody>${[...c.customers].sort((a, b) => visits30(b) - visits30(a) || lastVisit(b).localeCompare(lastVisit(a))).map((cu) => {
         const b = balOf(cu), n = loyN(cu), L = c.loyaltyDays || 7, v30 = visits30(cu), lv = lastVisit(cu);
         return `<tr><td><div class="strong">${esc(cu.name)}</div><div class="tiny muted">${maskPhone(cu.phone)}${cu.upiName ? ' · UPI linked' : ' · no UPI'} · joined ${ago(cu.joinedAt)}</div></td>
           <td class="r strong">${v30}${v30 >= 8 ? ' <span class="tag ok" style="margin-left:4px">Regular</span>' : ''}</td>
@@ -1293,9 +1454,9 @@ function renderCustomers() {
           <td><span class="loy">${'<i class="on"></i>'.repeat(Math.min(n, L))}${'<i></i>'.repeat(Math.max(0, L - n))}</span> <span class="tiny muted">${n}/${L}${cu.rewards ? ' · ' + cu.rewards + ' reward' + (cu.rewards > 1 ? 's' : '') : ''}</span></td>
           <td class="r strong ${b > 0 ? 'down' : ''}">${b > 0 ? inr(b) : '—'}</td>
           <td><button class="btn sm quiet" data-score="${cu.id}">${i('gauge')}Check</button><span class="tiny" id="sc-${cu.id}"></span></td>
-          <td class="r"><button class="btn sm" data-udopen="${cu.id}">${i('plus')}Kanakku</button>${b > 0 ? ` <button class="btn sm" data-udpaid="${cu.id}">${i('check')}Paid back</button>` : ''} <button class="btn icon quiet sm" data-crmdel="${cu.id}" aria-label="Remove">${i('trash-2')}</button></td></tr>
-          ${crmOpen === cu.id ? `<tr class="ud-form"><td colspan="7"><div class="row" style="gap:8px"><input class="input" id="udAmt" type="number" min="1" placeholder="Amount ₹" style="width:140px"><input class="input" id="udNote" placeholder="What for (optional)" style="flex:1"><button class="btn primary sm" data-udsave="${cu.id}">Add to kanakku and message ${esc(cu.name.split(' ')[0])}</button></div></td></tr>` : ''}`;
-      }).join('')}</tbody></table></div>` : `<div class="panel-body muted small">Nobody yet. When a customer scans the QR poster and taps Send on WhatsApp, they appear here.</div>`}
+          <td class="r"><button class="btn sm" data-udopen="${cu.id}">${i('plus')}Udhaar</button>${b > 0 ? ` <button class="btn sm" data-udpaid="${cu.id}">${i('check')}Paid back</button>` : ''} <button class="btn icon quiet sm" data-crmdel="${cu.id}" aria-label="Remove">${i('trash-2')}</button></td></tr>
+          ${crmOpen === cu.id ? `<tr class="ud-form"><td colspan="7"><div class="row" style="gap:8px"><input class="input" id="udAmt" type="number" min="1" placeholder="Amount ₹" style="width:140px"><input class="input" id="udNote" placeholder="What for (optional)" style="flex:1"><button class="btn primary sm" data-udsave="${cu.id}">Add to Udhaar and message ${esc(cu.name.split(' ')[0])}</button></div></td></tr>` : ''}`;
+      }).join('')}</tbody></table></div>` : `<div class="panel-body muted small">Nobody yet. When a customer scans the QR poster and taps ${crmCfg && crmCfg.provider === 'telegram' ? 'Start in Telegram' : 'Send on WhatsApp'}, they appear here.</div>`}
     </div>
 `;
   if (live && waLink && window.QRCode) new QRCode($('#joinQr'), { text: waLink, width: 180, height: 180, colorDark: '#0b1b33' });
@@ -1325,7 +1486,7 @@ document.addEventListener('click', async (e) => {
     if (d.udconfirm) { await api('/api/crm/udhar/confirm', { id: d.udconfirm }); toast('Confirmed. The customer gets the new balance on WhatsApp.'); }
     if (d.udreject) { await api('/api/crm/udhar/reject', { id: d.udreject }); toast('Marked as not paid.'); }
     if (d.udopen) { crmOpen = crmOpen === d.udopen ? null : d.udopen; renderCustomers(); }
-    if (d.udsave) { const cu = S.crm.customers.find((x) => x.id === d.udsave); await api('/api/crm/udhar/add', { customer: cu.phone, amount: Number($('#udAmt').value), note: $('#udNote').value }); crmOpen = null; toast('Added to kanakku. ' + cu.name + ' gets a WhatsApp message.'); }
+    if (d.udsave) { const cu = S.crm.customers.find((x) => x.id === d.udsave); await api('/api/crm/udhar/add', { customer: cu.phone, amount: Number($('#udAmt').value), note: $('#udNote').value }); crmOpen = null; toast('Added to Udhaar. ' + cu.name + ' gets a WhatsApp message.'); }
     if (d.udpaid) { const cu = S.crm.customers.find((x) => x.id === d.udpaid); const a = prompt('How much did ' + cu.name + ' pay back? (₹)', String(balOf(cu))); if (a) { await api('/api/crm/udhar/paid', { customer: cu.phone, amount: Number(a) }); toast('Recorded. ' + cu.name + ' gets the new balance on WhatsApp.'); } }
     if (d.crmdel) { const cu = S.crm.customers.find((x) => x.id === d.crmdel); if (confirm('Remove ' + cu.name + ' and all their data? This cannot be undone.')) await api('/api/crm/remove', { customer: cu.phone }); }
     if (d.score) { const cu = S.crm.customers.find((x) => x.id === d.score); const r = await fetch('/api/crm/score?' + new URLSearchParams({ customer: cu.phone })).then((x) => x.json()); $('#sc-' + cu.id).innerHTML = ` <b class="${r.score >= 70 ? 'up' : r.score >= 45 ? '' : 'down'}">${r.label}</b> · up to ${inr(r.suggested_limit)}<div class="tiny muted">${esc(r.reasons.join(' · '))}</div>`; }
@@ -1474,8 +1635,52 @@ function styleSwitch(c, styles) {
   return `<div class="style-switch">${styles.map((st) => `<button class="${(c.style || styles[0]) === st ? 'on' : ''}" data-cardstyle="${st}">${c.type === 'loan' && st === 'bar' ? 'Summary' : STYLE_NAMES[st]}</button>`).join('')}</div>`;
 }
 
-function costsMini(p, style = 'bar') {
+// Income, expenses and profit for the last 6 months: bars for the first two, a smooth line for profit.
+function monthsModel(n = 6) {
+  const out = [], now = new Date();
+  for (let k = n - 1; k >= 0; k--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - k, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const isNow = k === 0;
+    const paytm = S.history.days.filter((x) => x.date.startsWith(key)).reduce((s, x) => s + x.total, 0) + (isNow ? live().received : 0);
+    const cash = (S.cashSales || []).filter((x) => x.month === key).reduce((s, x) => s + x.amount, 0);
+    const exp = S.expenses.filter((e) => e.month === key).reduce((s, e) => s + e.amount, 0);
+    const loan = S.settlements.filter((st) => { const t = new Date(st.at); return t.getFullYear() === d.getFullYear() && t.getMonth() === d.getMonth(); }).reduce((s, st) => s + st.deduction, 0);
+    out.push({ label: d.toLocaleDateString('en-IN', { month: 'short' }), full: d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }), income: paytm + cash, expenses: exp + loan, profit: paytm + cash - exp - loan, isNow });
+  }
+  return out;
+}
+const rupeeK = (v) => (v >= 100000 ? `₹${(v / 100000).toFixed(v >= 1000000 ? 0 : 1).replace(/\.0$/, '')}L` : v >= 1000 ? `₹${(v / 1000).toFixed(1).replace(/\.0$/, '')}K` : `₹${Math.round(v)}`);
+function trendSVG() {
+  const m = monthsModel(), W = 640, H = 300, L = 54, R = 54, T = 20, B = 34;
+  const top = Math.max(...m.map((x) => Math.max(x.income, x.expenses, x.profit)), 1);
+  const step = (() => { const raw = top / 5, p = Math.pow(10, Math.floor(Math.log10(raw))); return [1, 2, 2.5, 5, 10].map((f) => f * p).find((s) => s >= raw); })();
+  const max = step * Math.ceil(top / step), ticks = Math.round(max / step);
+  const y = (v) => T + (H - T - B) * (1 - Math.max(0, v) / max);
+  const slot = (W - L - R) / m.length, bw = Math.min(34, slot * 0.28);
+  const cx = (k) => L + slot * k + slot / 2;
+  const pts = m.map((x, k) => [cx(k), y(x.profit)]);
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  for (let k = 0; k < pts.length - 1; k++) {
+    const p0 = pts[k - 1] || pts[k], p1 = pts[k], p2 = pts[k + 1], p3 = pts[k + 2] || p2;
+    d += ` C${p1[0] + (p2[0] - p0[0]) / 6},${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6},${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]},${p2[1]}`;
+  }
+  const grid = Array.from({ length: ticks + 1 }, (_, k) => { const v = step * k, yy = y(v); return `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" stroke="#eef0f5"/><text x="${L - 8}" y="${yy + 4}" text-anchor="end" font-size="11" fill="#64748b">${rupeeK(v)}</text><text x="${W - R + 8}" y="${yy + 4}" font-size="11" fill="#64748b">${rupeeK(v)}</text>`; }).join('');
+  const bars = m.map((x, k) => `
+    <rect x="${cx(k) - bw - 2}" y="${y(x.income)}" width="${bw}" height="${Math.max(0, H - B - y(x.income))}" rx="2" fill="#4f46e5"><title>${esc(x.full)} income: ${inr(x.income)}</title></rect>
+    <rect x="${cx(k) + 2}" y="${y(x.expenses)}" width="${bw}" height="${Math.max(0, H - B - y(x.expenses))}" rx="2" fill="#f97316"><title>${esc(x.full)} expenses: ${inr(x.expenses)}</title></rect>
+    <text x="${cx(k) - bw / 2 - 2}" y="${y(x.income) - 6}" text-anchor="middle" font-size="11" fill="#475569">${rupeeK(x.income)}</text>
+    <text x="${cx(k) + bw / 2 + 2}" y="${y(x.expenses) - 6}" text-anchor="middle" font-size="11" fill="#475569">${rupeeK(x.expenses)}</text>
+    <text x="${cx(k)}" y="${H - 10}" text-anchor="middle" font-size="12" fill="#334155">${esc(x.label)}</text>`).join('');
+  const dots = m.map((x, k) => `<circle cx="${pts[k][0]}" cy="${pts[k][1]}" r="4" fill="#16a34a"><title>${esc(x.full)} profit: ${inr(x.profit)}</title></circle>`).join('');
+  return `<div class="trend"><div class="trend-legend"><span><i style="background:#4f46e5"></i>Income</span><span><i style="background:#f97316"></i>Expenses</span><span><i class="ln"></i>Profit</span></div>
+    <svg viewBox="0 0 ${W} ${H}" class="trend-svg" role="img" aria-label="Income, expenses and profit for the last 6 months">${grid}${bars}<path d="${d}" fill="none" stroke="#16a34a" stroke-width="2"/>${dots}</svg>
+    <div class="tiny muted">Expenses are what you told Voxa, plus loan payments. Earlier months show costs only if you added them.</div></div>`;
+}
+
+function costsMini(p, style = 'trend') {
   const segs0 = [...p.costs.map((c) => ({ label: c.label, v: c.amount, color: COST_COLORS[c.category] })), ...(p.loanPaid ? [{ label: 'Loan payments', v: p.loanPaid, color: '#ff8f80' }] : []), { label: 'Left with you', v: Math.max(0, p.left), color: '#13a06f' }];
+  if (style === 'trend') return trendSVG();
   if (style === 'donut') return donutSVG(segs0);
   if (style === 'columns') return columnsHTML(segs0);
   if (style === 'table') return tableHTML(segs0.map((x) => [`<i class="dot" style="background:${x.color}"></i>${esc(x.label)}`, inr(x.v)]), ['Where the money went', 'Amount']);
@@ -1511,8 +1716,10 @@ function renderCosts() {
     </div>
     ${p.hasStock ? '' : `<div class="note-plain warn row">${i('package')}<span>Stock purchases are not added yet, so this is not your real profit. Tell Voxa what you spent on stock.</span><button class="btn sm" data-act="ask" data-q="${esc(lang === 'ta' ? 'இந்த மாதம் சரக்கு 1 லட்சம்' : lang === 'hi' ? 'इस महीने माल 1 लाख' : 'This month stock 1 lakh')}">${i('mic')}Add stock</button></div>`}
     <div class="panel"><div class="panel-body stack" style="gap:12px">
+      <div><h2 class="card-title">Income and expenses</h2><p class="ink-2 small" style="margin-top:4px">Last 6 months: what came in, what went out, and the profit left with you.</p></div>
+      ${trendSVG()}
       <div><h2 class="card-title">Where this month's money went</h2><p class="ink-2 small" style="margin-top:4px">From all the money that came in, this is what went to running the shop, to the loan, and what is left with you.</p></div>
-      ${costsMini(p)}
+      ${costsStrip(p)}
     </div></div>
     <div class="loan-grid">
       <div class="panel"><div class="panel-body stack" style="gap:12px"><h2 class="card-title">Costs Voxa has noted</h2>
@@ -1526,12 +1733,22 @@ function renderCosts() {
   icons();
 }
 
+// Dashboards appear in the chat only when he taps the button, so a short answer stays short.
+const shownCards = new Set();
+const CARD_BTN = { sales: ['chart-column', 'Show sales dashboard'], costs: ['piggy-bank', 'Show costs & profit dashboard'], loan: ['hand-coins', 'Show loan dashboard'], payments: ['credit-card', 'Show payments dashboard'], planner: ['lightbulb', 'Show insights'], eligibility: ['badge-check', 'Show loan check'] };
+function cardOrButton(cd, key) {
+  if (!CARD_BTN[cd.type] || shownCards.has(key)) return chatCard(cd);
+  return `<div class="msg-actions"><button class="btn sm" data-showcard="${esc(key)}">${i(CARD_BTN[cd.type][0])}${CARD_BTN[cd.type][1]}</button></div>`;
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-showcard]'); if (!b) return; shownCards.add(b.dataset.showcard); renderChat(); const ch = $('#chat'); ch.scrollTop = ch.scrollHeight; });
+
 // ---------- dashboard cards inside Voxa's replies ----------
 function chatCard(c) {
   if (c.type === 'costs') {
     const p = profitNow();
     if (!p.list.length) return '';
-    return `<div class="vcard"><div class="vcard-h">${i('piggy-bank')}${esc(c.title || 'Costs and profit')} · ${esc(p.monthName)}</div>
+    const trend = !c.style || c.style === 'trend';
+    return `<div class="vcard"><div class="vcard-h">${i('piggy-bank')}${esc(c.title || (trend ? 'Income and expenses' : 'Costs and profit'))} · ${trend ? 'Last 6 months' : esc(p.monthName)}</div>
       <div class="vcard-k"><div><span>Sales</span><b>${inr(p.revenue)}</b></div><div><span>Costs</span><b style="color:#8b5cf6">${inr(p.costTotal)}</b></div><div><span>Loan</span><b style="color:#e2604f">${inr(p.loanPaid)}</b></div><div><span>Left</span><b class="up">${inr(p.left)}</b></div></div>
       ${costsMini(p, c.style)}${c.noteId ? styleSwitch(c, ['bar', 'donut', 'columns', 'table']) : ''}<button class="btn sm" data-act="goto" data-id="costs">${i('arrow-right')}Open costs and profit</button></div>`;
   }
@@ -1687,7 +1904,7 @@ function renderChat() {
       + (sessions.length ? sessions.map((x) => row(x.id, x.title, x.at, x.messages.length, false)).join('') : (S.chat.length ? '' : '<div class="empty">No chats yet.</div>'));
     if (showChats && !fullPage) { icons(); return; }
   }
-  $('#chat').innerHTML = (S.chat.length ? S.chat.map((c, idx) => `<div class="msg ${c.role}">${c.thumb ? `<img class="bill-thumb" src="${esc(c.thumb)}" alt="">` : ''}${esc(c.text)}${c.role === 'assistant' ? `<span class="src">${c.source === 'claude' ? 'Voxa · Claude' : c.source === 'sarvam' ? 'Voxa · Sarvam AI' : 'Voxa · offline mode'}<button class="save-note play-btn ${V.speakingKey() === 'm' + c.at ? 'on' : ''}" data-play="${idx}" title="${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play this answer'}">${i(V.speakingKey() === 'm' + c.at ? 'square' : 'play')}${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play'}</button><button class="save-note" data-savenote="${idx}" ${c.savedNote ? 'disabled' : ''} title="Save to Voxa notes">${i(c.savedNote ? 'bookmark-check' : 'bookmark-plus')}${c.savedNote ? 'Saved' : 'Save to notes'}</button></span>` : ''}</div>${c.role === 'assistant' && c.cards ? c.cards.map(chatCard).join('') : ''}`).join('')
+  $('#chat').innerHTML = (S.chat.length ? S.chat.map((c, idx) => `<div class="msg ${c.role}">${c.thumb ? `<img class="bill-thumb" src="${esc(c.thumb)}" alt="">` : ''}${esc(c.text)}${c.role === 'assistant' ? `<span class="src">${c.source === 'claude' ? 'Voxa · Claude' : c.source === 'gemini' ? 'Voxa · Gemini' : c.source === 'sarvam' ? 'Voxa · Sarvam AI' : 'Voxa · offline mode'}<button class="save-note play-btn ${V.speakingKey() === 'm' + c.at ? 'on' : ''}" data-play="${idx}" title="${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play this answer'}">${i(V.speakingKey() === 'm' + c.at ? 'square' : 'play')}${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play'}</button><button class="save-note" data-savenote="${idx}" ${c.savedNote ? 'disabled' : ''} title="Save to Voxa notes">${i(c.savedNote ? 'bookmark-check' : 'bookmark-plus')}${c.savedNote ? 'Saved' : 'Save to notes'}</button></span>` : ''}</div>${c.role === 'assistant' && c.cards ? c.cards.map((cd, ci) => cardOrButton(cd, c.at + '-' + ci)).join('') : ''}`).join('')
     : `<div class="voxa-empty"><div class="dot-ico ai" style="width:64px;height:64px;border-radius:20px">${i('bot')}</div><h2 class="card-title">${esc(intro)}</h2></div>`) + (busy ? '<div class="msg assistant typing">Voxa is thinking…</div>' : '');
   $('#chat').scrollTop = $('#chat').scrollHeight;
   icons();
@@ -1737,9 +1954,18 @@ function render() {
   const m = S.merchant, lang = m.lang, L = live();
   const d = S.history.days, n = d.length;
   V.setLangUI(lang);
-  if (window.VT) VT.set(lang === 'ta' ? 'ta' : 'en');
+  if (window.VT) VT.set(lang);
   $('#quickQs').innerHTML = quickFor(lang).map((q) => `<button class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join('');
-  V.ready().then((c) => { $('#aiMode').textContent = (c.ai ? `Brain: ${c.brainName} · ${c.model}` : 'Brain: offline rules') + (c.sarvam ? ' · Voice: Sarvam' : ' · Voice: browser'); });
+  V.ready().then((c) => {
+    const brain = c.ai ? `${c.brainName} · ${c.model}` : (lang === 'hi' ? 'ऑफ़लाइन नियम' : 'offline rules');
+    const voice = lang === 'hi'
+      ? c.cartesiaHindi ? 'आवाज़: Cartesia सिया (हिंदी)' : c.sarvam ? 'आवाज़: Sarvam' : 'आवाज़: ब्राउज़र'
+      : lang === 'ta'
+        ? c.cartesiaTamil ? 'குரல்: Cartesia ஜனனி (தமிழ்)' : c.sarvam ? 'குரல்: Sarvam' : 'குரல்: உலாவி'
+        : c.cartesiaEnglish ? 'Voice: Cartesia Skylar (English)' : c.sarvam ? 'Voice: Sarvam' : 'Voice: browser';
+    const label = lang === 'hi' ? 'मस्तिष्क' : lang === 'ta' ? 'மூளை' : 'Brain';
+    $('#aiMode').textContent = `${label}: ${brain} · ${voice}`;
+  });
   renderPeriodSelect();
 
   // KPI row
@@ -1843,10 +2069,8 @@ function render() {
   }
 }
 
-let firstState = true;
 subscribe((state) => {
   S = state;
-  if (firstState) { firstState = false; if (S.merchant.lang !== 'en') { S.merchant.lang = 'en'; api('/api/merchant/lang', { lang: 'en' }).catch(() => {}); } }
   render();
 });
 </script>

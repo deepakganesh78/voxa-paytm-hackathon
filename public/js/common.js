@@ -1,6 +1,9 @@
 // Shared helpers for every Voxa screen: shell + screen switcher, icons, live state,
 // voice, and the signature payment-route component.
 window.V = (() => {
+  let refreshNow = null; // set when live updates are polled; asks for an update at once
+
+
   const inr = (n) => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const time = (ms) => new Date(ms).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -62,7 +65,7 @@ window.V = (() => {
       <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">${i('menu')}</button>
       <div class="where"><b>${esc(d.title || '')}</b>${d.sub ? ' · ' + esc(d.sub) : ''}</div>
       <div class="right">
-        ${d.langToggle ? `<div class="seg lang-top" id="langTop" aria-label="Language" title="Change language" data-noi18n><span class="lang-ico">${i('languages')}</span><button data-lang="en">EN</button><button data-lang="ta">தமிழ்</button></div>` : ''}
+        ${d.langToggle ? `<div class="seg lang-top" id="langTop" aria-label="Language" title="Change language" data-noi18n><span class="lang-ico">${i('languages')}</span><button data-lang="en">EN</button><button data-lang="ta">தமிழ்</button><button data-lang="hi">हिन्दी</button></div>` : ''}
         <span class="live off" title="Live connection"></span>
         <button class="icon-btn" id="bellBtn" aria-label="Updates">${i('bell')}<span class="pip hidden" id="bellPip"></span></button>
         <div class="avatar">${esc(initial)}</div>
@@ -105,6 +108,8 @@ window.V = (() => {
       toast(err.message);
       throw err;
     }
+    // when updates are polled, look at once instead of waiting for the next poll
+    if (body !== undefined && refreshNow) setTimeout(refreshNow, 150);
     return data;
   }
 
@@ -118,24 +123,61 @@ window.V = (() => {
     toastTimer = setTimeout(() => el.classList.add('hidden'), 3200);
   }
 
-  // Live state over Server-Sent Events. onState(state) runs on every change.
+  // Live state. Normally over Server-Sent Events, so every change arrives at once. On Vercel (config.serverless) it is
+  // polled instead: a long-open connection would hold a server copy busy and make Vercel start extra copies.
   function subscribe(onState) {
-    const es = new EventSource('/api/stream');
-    es.addEventListener('state', (e) => {
-      const dot = $('.topbar .live');
-      if (dot) dot.classList.remove('off');
-      try { onState(JSON.parse(e.data)); icons(); } catch (err) { console.error(err); }
+    let es = null, timer = null, lastRev = null, polling = false;
+    const setLive = (ok) => { const dot = $('.topbar .live'); if (dot) dot.classList.toggle('off', !ok); };
+    const connect = () => {
+      if (es) es.close();
+      es = new EventSource('/api/stream');
+      es.addEventListener('state', (e) => {
+        setLive(true);
+        try { onState(JSON.parse(e.data)); icons(); } catch (err) { console.error(err); }
+      });
+      es.onerror = () => setLive(false);
+    };
+    async function poll() {
+      clearTimeout(timer);
+      try {
+        const r = await fetch('/api/state' + (lastRev === null ? '' : `?rev=${lastRev}`));
+        const d = await r.json();
+        setLive(r.ok);
+        if (r.ok && !d.unchanged) { lastRev = d.rev; onState(d); icons(); }
+      } catch (err) { setLive(false); }
+      timer = setTimeout(poll, document.visibilityState === 'visible' ? 1200 : 8000);
+    }
+    ready.then((c) => {
+      if (c.serverless) { polling = true; refreshNow = poll; poll(); } else connect();
     });
-    es.onerror = () => { const dot = $('.topbar .live'); if (dot) dot.classList.add('off'); };
+    // a phone freezes background tabs: when the app comes back, catch up straight away
+    const resume = () => { if (polling) poll(); else if (!es || es.readyState !== 1) connect(); };
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resume(); });
+    window.addEventListener('online', resume);
   }
 
-  let config = { claude: false, sarvam: false };
+  let config = { claude: false, sarvam: false, cartesiaEnglish: false, cartesiaTamil: false, cartesiaHindi: false };
   const ready = fetch('/api/config').then((r) => r.json()).then((c) => (config = c)).catch(() => config);
 
   // ---------- voice ----------
   const LANG = { en: 'en-IN', ta: 'ta-IN', hi: 'hi-IN' };
   let audio;
   let speakingKey = null;
+  // Phones only let a page play sound that was started by a tap. One audio element is "unlocked" by the first tap
+  // anywhere on the page and then reused for every spoken reply, so answers can play after the network call finishes.
+  let player = null;
+  const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=';
+  const getPlayer = () => { if (!player) { player = new Audio(); player.preload = 'auto'; player.setAttribute('playsinline', ''); } return player; };
+  let audioUnlocked = false;
+  function unlockAudio() {
+    if (audioUnlocked || typeof Audio !== 'function') return;
+    audioUnlocked = true;
+    const p = getPlayer();
+    p.src = SILENCE;
+    const played = p.play();
+    if (played && played.then) played.then(() => p.pause()).catch(() => { audioUnlocked = false; });
+  }
+  ['pointerdown', 'touchend', 'click', 'keydown'].forEach((name) => document.addEventListener(name, unlockAudio, { passive: true }));
   const speakState = (key) => { speakingKey = key; document.dispatchEvent(new CustomEvent('voxa-speak', { detail: key })); };
   function stopSpeaking() {
     if (audio) { audio.pause(); audio = null; }
@@ -144,27 +186,43 @@ window.V = (() => {
   }
   async function speak(text, lang = 'en', key = 'voxa') {
     if (!text) return;
+    const language = String(lang).toLowerCase().split(/[-_]/)[0];
     stopSpeaking();
     speakState(key);
     await ready;
-    if (config.sarvam) {
+    const useCartesia = (language === 'en' && config.cartesiaEnglish) || (language === 'ta' && config.cartesiaTamil) || (language === 'hi' && config.cartesiaHindi);
+    const languageName = { en: 'English', ta: 'Tamil', hi: 'Hindi' }[language];
+    if (config.sarvam || useCartesia) {
       try {
-        const r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, lang }) });
+        const r = await fetch('/api/tts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, lang: language }) });
         if (r.ok) {
           const blob = await r.blob();
           if (audio) audio.pause();
           if (speakingKey !== key) return; // stopped while loading
-          audio = new Audio(URL.createObjectURL(blob));
-          audio.onended = () => { if (speakingKey === key) speakState(null); };
-          await audio.play().catch(() => speakState(null));
+          const url = URL.createObjectURL(blob);
+          audio = getPlayer();
+          audio.src = url;
+          audio.onended = () => { URL.revokeObjectURL(url); if (speakingKey === key) speakState(null); };
+          await audio.play().catch(() => { toast('Tap the Play button to hear the reply.'); speakState(null); });
           return;
         }
-      } catch (e) { /* fall back to the browser voice */ }
+        if (useCartesia) {
+          toast(`Cartesia ${languageName} voice failed (${r.status}). Try again.`);
+          speakState(null);
+          return;
+        }
+      } catch (e) {
+        if (useCartesia) {
+          toast(`Cartesia ${languageName} voice could not be reached. Check your connection and try again.`);
+          speakState(null);
+          return;
+        }
+      }
     }
     if (!('speechSynthesis' in window)) return;
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = LANG[lang] || 'en-IN';
+    u.lang = LANG[language] || 'en-IN';
     const voices = speechSynthesis.getVoices();
     const voice = voices.find((v) => v.lang === u.lang) || voices.find((v) => v.lang.startsWith(u.lang.slice(0, 2)));
     if (voice) u.voice = voice;
@@ -193,15 +251,23 @@ window.V = (() => {
     return new Blob([buf], { type: 'audio/wav' });
   }
 
-  function listenSarvam(lang, onText, onEnd) {
-    const ctl = { rec: null, stop() { if (this.rec && this.rec.state !== 'inactive') this.rec.stop(); } };
+  function listenSarvam(lang, onText, onEnd, onRecording) {
+    let cancelled = false;
+    const ctl = { rec: null, stop() {
+      if (!this.rec) { cancelled = true; onEnd && onEnd(); }
+      else if (this.rec.state !== 'inactive') this.rec.stop();
+    } };
     const t0 = Date.now();
     navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
       const chunks = [];
-      const rec = new MediaRecorder(stream);
+      let rec;
+      try { rec = new MediaRecorder(stream); }
+      catch (e) { stream.getTracks().forEach((t) => t.stop()); throw e; }
       ctl.rec = rec;
       rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
       rec.onstop = async () => {
+        onRecording && onRecording(false);
         stream.getTracks().forEach((t) => t.stop());
         const raw = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
         const secs = Math.ceil((Date.now() - t0) / 1000);
@@ -212,31 +278,57 @@ window.V = (() => {
           const d = await r.json();
           if (r.ok && d.transcript) onText(d.transcript, d.language);
           else if (r.ok) toast('I did not catch that. Tap the mic and speak a little closer.');
-          // a failure only skips Sarvam for the next try, it does not switch off Sarvam for good
-          else { sarvamSttBroken = true; setTimeout(() => (sarvamSttBroken = false), 30000); toast('Sarvam speech failed (' + (d.error || r.status) + '). Using the browser voice for the next try.'); }
+          // only "not configured" switches to the browser voice; a temporary error just asks to try again
+          else if (r.status === 404) { sarvamSttBroken = true; toast('Speech service is not set up. Using the browser voice.'); }
+          else toast('Could not read that just now (' + (d.error || r.status) + '). Tap the mic and try again.');
         } catch (e) { toast('Speech error: ' + e.message); }
         onEnd && onEnd();
       };
-      rec.start();
+      try { rec.start(); }
+      catch (e) { stream.getTracks().forEach((t) => t.stop()); throw e; }
+      onRecording && onRecording(true);
       toast('Listening… tap the mic again when you finish');
       setTimeout(() => ctl.stop(), 15000);
-    }).catch(() => { toast('Microphone is blocked. Allow it in the browser.'); onEnd && onEnd(); });
+    }).catch((e) => { if (!cancelled) { toast(e && e.name === 'NotAllowedError' ? MIC_BLOCKED : 'Microphone error: ' + (e && e.message)); onEnd && onEnd(); } });
     return ctl;
   }
 
-  function listen(lang, onText, onEnd) {
-    if (config.sarvam && !sarvamSttBroken && navigator.mediaDevices && window.MediaRecorder) return listenSarvam(lang, onText, onEnd);
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { toast('Voice input needs Chrome. You can type instead.'); onEnd && onEnd(); return null; }
+  // Browser speech recognition (no Sarvam key). stop() must work even if the browser never answers the permission prompt.
+  function listenBrowser(lang, SR, onText, onEnd, onRecording) {
     const r = new SR();
     r.lang = LANG[lang] || 'en-IN';
     r.interimResults = false;
     r.maxAlternatives = 1;
+    r.onstart = () => onRecording && onRecording(true);
     r.onresult = (e) => onText(e.results[0][0].transcript);
-    r.onerror = (e) => { if (e.error !== 'aborted') toast('Microphone: ' + e.error); };
-    r.onend = () => onEnd && onEnd();
-    r.start();
-    return r;
+    r.onerror = (e) => {
+      if (e.error === 'aborted') return;
+      if (e.error === 'no-speech') toast('I did not hear anything. Tap the mic and speak a little closer.');
+      else if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast(MIC_BLOCKED);
+      else toast('Microphone: ' + e.error);
+    };
+    r.onend = () => { onRecording && onRecording(false); onEnd && onEnd(); };
+    try { r.start(); } catch (e) { toast('Microphone: ' + e.message); onEnd && onEnd(); return { stop() {} }; }
+    return { stop() { try { r.abort(); } catch (e) { /* already stopped */ } onEnd && onEnd(); } };
+  }
+
+  const MIC_BLOCKED = 'The microphone is blocked for this page. Click the lock icon in the address bar, allow Microphone, then try again.';
+
+  // Returns { stop() }. onEnd runs exactly once, whatever happens (done, blocked, stopped early).
+  function listen(lang, onText, onEnd, onRecording) {
+    let over = false;
+    const end = () => { if (over) return; over = true; onEnd && onEnd(); };
+    const useSarvam = (config.stt || config.sarvam) && !sarvamSttBroken && navigator.mediaDevices && window.MediaRecorder;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!useSarvam && !SR) { toast('Voice input needs Chrome. You can type instead.'); end(); return null; }
+    const inner = useSarvam ? listenSarvam(lang, onText, end, onRecording) : listenBrowser(lang, SR, onText, end, onRecording);
+    // a blocked microphone never answers the request, so check the permission and say so instead of waiting
+    try {
+      navigator.permissions && navigator.permissions.query({ name: 'microphone' }).then((p) => {
+        if (p.state === 'denied' && !over) { toast(MIC_BLOCKED); inner.stop(); end(); }
+      }).catch(() => {});
+    } catch (e) { /* Permissions API not available */ }
+    return { stop() { inner.stop(); } };
   }
 
   // ---------- tags ----------

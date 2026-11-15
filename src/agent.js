@@ -1,5 +1,5 @@
 // Voxa, the AI accountant agent.
-// The brain is Claude (ANTHROPIC_API_KEY) or Sarvam sarvam-105b (SARVAM_API_KEY), both with tool calling.
+// Gemini, Claude and Sarvam are optional brains; rules keep the demo working when a provider is unavailable.
 // With no key, or if a call fails, the same tools are driven by simple rules, so the demo never breaks on stage.
 import Anthropic from '@anthropic-ai/sdk';
 import * as SV from './sarvam.js';
@@ -9,13 +9,16 @@ import { msg, rupee, LANG_NAMES } from './i18n.js';
 
 const MODEL = process.env.VOXA_MODEL || 'claude-opus-5-5';
 const EFFORT = process.env.VOXA_EFFORT || 'low';
+const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 const CLAUDE_KEY = !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
-// VOXA_BRAIN=claude|sarvam|rules picks one; otherwise Claude if its key is set, then Sarvam, then rules.
+// VOXA_BRAIN=gemini|claude|sarvam|rules picks one; otherwise Claude, Gemini, then Sarvam if configured.
 const BRAIN = process.env.VOXA_AI === 'off' ? 'rules'
+  : process.env.VOXA_BRAIN === 'gemini' && GEMINI_KEY ? 'gemini'
   : process.env.VOXA_BRAIN === 'sarvam' && SV.SARVAM_ON ? 'sarvam'
   : process.env.VOXA_BRAIN === 'claude' && CLAUDE_KEY ? 'claude'
   : process.env.VOXA_BRAIN === 'rules' ? 'rules'
-  : CLAUDE_KEY ? 'claude' : SV.SARVAM_ON ? 'sarvam' : 'rules';
+  : CLAUDE_KEY ? 'claude' : GEMINI_KEY ? 'gemini' : SV.SARVAM_ON ? 'sarvam' : 'rules';
 const AI_ON = BRAIN !== 'rules';
 // Automated events (stuck payments, settlements) can stay on rules to save credits: VOXA_EVENTS_AI=off
 const EVENTS_AI = AI_ON && process.env.VOXA_EVENTS_AI !== 'off';
@@ -24,8 +27,8 @@ let fallbacksSupported = true;
 
 export const aiStatus = () => ({
   ai: AI_ON, brain: BRAIN, claude: BRAIN === 'claude',
-  brainName: BRAIN === 'claude' ? 'Claude' : BRAIN === 'sarvam' ? 'Sarvam AI' : 'offline rules',
-  model: BRAIN === 'claude' ? MODEL : BRAIN === 'sarvam' ? SV.CHAT_MODEL : null,
+  brainName: BRAIN === 'claude' ? 'Claude' : BRAIN === 'gemini' ? 'Gemini' : BRAIN === 'sarvam' ? 'Sarvam AI' : 'offline rules',
+  model: BRAIN === 'claude' ? MODEL : BRAIN === 'gemini' ? GEMINI_MODEL : BRAIN === 'sarvam' ? SV.CHAT_MODEL : null,
   vision: BRAIN === 'claude' ? MODEL : SV.SARVAM_ON ? SV.VISION_MODEL : null,
   aiUsage: SV.chatUsage,
 });
@@ -43,8 +46,67 @@ E.setPhraser(async (situation, facts, m) => {
 
 // one entry point for whichever brain is on
 function runBrain({ system, messages, tools, ctx }) {
+  if (BRAIN === 'gemini') return runGemini({ system, messages, tools, ctx });
   if (BRAIN === 'sarvam') return SV.runSarvam({ system, messages, tools, ctx, callTool, log: E.log });
   return runClaude({ system, messages, tools, ctx });
+}
+
+function geminiSchema(schema) {
+  const out = { ...schema };
+  if (typeof out.type === 'string') out.type = out.type.toUpperCase();
+  if (out.properties) out.properties = Object.fromEntries(Object.entries(out.properties).map(([key, value]) => [key, geminiSchema(value)]));
+  if (out.items) out.items = geminiSchema(out.items);
+  return out;
+}
+
+async function runGemini({ system, messages, tools, ctx, maxTurns = 6 }) {
+  const contents = messages.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: m.parts || [{ text: String(m.content || '') }],
+  }));
+  const declarations = tools?.length ? tools.map((t) => ({
+    name: t.name, description: t.description, parameters: geminiSchema(t.input_schema),
+  })) : null;
+
+  for (let turn = 0; turn < maxTurns; turn++) {
+    const t0 = Date.now();
+    const request = {
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
+      generationConfig: { temperature: 0.2, maxOutputTokens: 500 },
+    };
+    if (declarations) {
+      request.tools = [{ functionDeclarations: declarations }];
+      request.toolConfig = { functionCallingConfig: { mode: turn === maxTurns - 1 ? 'NONE' : 'AUTO' } };
+    }
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`, {
+      method: 'POST',
+      headers: { 'x-goog-api-key': GEMINI_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+      signal: AbortSignal.timeout(45000),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(`Gemini ${response.status}: ${data.error?.message || response.statusText}`);
+    const candidate = data.candidates?.[0];
+    if (!candidate?.content?.parts) throw new Error(data.promptFeedback?.blockReason || 'Gemini returned no response');
+    const parts = candidate.content.parts;
+    const calls = parts.filter((part) => part.functionCall?.name);
+    const text = parts.filter((part) => typeof part.text === 'string').map((part) => part.text).join('\n').trim();
+    E.log({ agent: ctx.agent, source: 'gemini', type: 'model', name: GEMINI_MODEL, input: `turn ${turn + 1}`, output: `${calls.length ? calls.length + ' tool call(s)' : 'answer'}`, ms: Date.now() - t0 });
+    if (!calls.length) return text;
+    contents.push({ role: 'model', parts });
+    contents.push({
+      role: 'user',
+      parts: calls.map(({ functionCall }) => {
+        const allowed = (tools || []).some((tool) => tool.name === functionCall.name);
+        const result = allowed
+          ? callTool(functionCall.name, functionCall.args || {}, ctx)
+          : { error: 'That tool is not available here.' };
+        return { functionResponse: { name: functionCall.name, response: result } };
+      }),
+    });
+  }
+  return '';
 }
 
 // ---------------------------------------------------------------- tools
@@ -156,19 +218,19 @@ const TOOL_DEFS = {
     }, required: ['title', 'summary_for_support'] },
   },
   udhar_check: {
-    description: "Before giving Kanakku (store credit), check a customer on his WhatsApp list: visits, how they paid back before, what they owe now. Returns a score, risk, suggested limit and a yes/careful/no for the amount asked. Use for 'can I give Suresh 2000 credit?'.",
+    description: "Before giving Udhaar (store credit), check a customer on his WhatsApp list: visits, how they paid back before, what they owe now. Returns a score, risk, suggested limit and a yes/careful/no for the amount asked. Use for 'can I give Suresh 2000 credit?'.",
     input_schema: { type: 'object', properties: { customer: { type: 'string', description: 'Name or phone' }, amount: { type: 'number' } }, required: ['customer'] },
   },
   udhar_add: {
-    description: "Record Kanakku (store credit) Murugan gave a customer, e.g. 'Suresh 2000 kanakku la ezhudhu' or 'Suresh 2000 udhar, keep it in log'. Voxa logs it and the customer gets a WhatsApp message with their total due. Only for customers who joined by scanning the shop QR.",
+    description: "Record Udhaar (store credit) Murugan gave a customer, e.g. 'Suresh 2000 Udhaar la ezhudhu' or 'Suresh 2000 udhar, keep it in log'. Voxa logs it and the customer gets a WhatsApp message with their total due. Only for customers who joined by scanning the shop QR.",
     input_schema: { type: 'object', properties: { customer: { type: 'string' }, amount: { type: 'number' }, note: { type: 'string', description: 'What it was for, optional' } }, required: ['customer', 'amount'] },
   },
   udhar_paid: {
-    description: "Murugan says a customer paid back Kanakku (cash or any way). Records it as confirmed by Murugan, lowers their balance and messages them the new balance.",
+    description: "Murugan says a customer paid back Udhaar (cash or any way). Records it as confirmed by Murugan, lowers their balance and messages them the new balance.",
     input_schema: { type: 'object', properties: { customer: { type: 'string' }, amount: { type: 'number', description: 'Leave out for the full balance' } }, required: ['customer'] },
   },
   customers_overview: {
-    description: "Customers who joined on WhatsApp: loyalty card progress, Kanakku due, repayments waiting for Murugan's OK.",
+    description: "Customers who joined on WhatsApp: loyalty card progress, Udhaar due, repayments waiting for Murugan's OK.",
     input_schema: { type: 'object', properties: {} },
   },
   show_style_choices: {
@@ -186,6 +248,10 @@ const TOOL_DEFS = {
   get_settlements: {
     description: 'Recent settlements and loan repayment progress.',
     input_schema: { type: 'object', properties: {} },
+  },
+  get_app_data: {
+    description: "Read everything on one page of the app, exactly the data Murugan sees there, to answer any question about it. page: dashboard (sales per day, months, hourly, today), payments (every payment, tickets, settlements, offers), insights (planner tips, regular customers, hourly pattern), loan (loan status, eligibility), costs (costs, cash sales, profit), notes (all Voxa notes with text), whatsapp (WhatsApp/Telegram messages and settings), customers (customers, loyalty cards, Udhaar), all (everything, shortened). Use it whenever the answer is not already in the live snapshot or other tools.",
+    input_schema: { type: 'object', properties: { page: { type: 'string', enum: ['dashboard', 'payments', 'insights', 'loan', 'costs', 'notes', 'whatsapp', 'customers', 'all'] } }, required: ['page'] },
   },
 };
 
@@ -354,7 +420,7 @@ function runTool(name, input, ctx) {
     }
     case 'udhar_check': {
       const cu = CRM.findCustomer(input.customer);
-      if (!cu) return { found: false, note: 'Not on his WhatsApp list. Ask the customer to scan the shop QR and tap Send; then Voxa can track their Kanakku.' };
+      if (!cu) return { found: false, note: 'Not on his WhatsApp list. Ask the customer to scan the shop QR and tap Send; then Voxa can track their Udhaar.' };
       return { customer: cu.name, ...CRM.creditScore(cu, Number(input.amount) || 0) };
     }
     case 'udhar_add': {
@@ -412,6 +478,8 @@ function runTool(name, input, ctx) {
     }
     case 'get_settlements':
       return { settlements: S.settlements.slice(0, 5), loan: S.loan, unsettled_today: S.merchant.unsettled };
+    case 'get_app_data':
+      return appData(input.page || 'all');
     default:
       return { error: 'unknown tool' };
   }
@@ -499,7 +567,7 @@ async function handleEvent(kind, payload, rules) {
       E.log({ agent: 'event', source: 'rules', type: 'fallback', name: 'ai_error', input: '', output: e.message, ms: 0 });
     }
   }
-  ctx.source = ctx.source === 'claude' && ctx.ticketId ? 'claude' : 'rules';
+  ctx.source = ['claude', 'gemini', 'sarvam'].includes(ctx.source) && ctx.ticketId ? ctx.source : 'rules';
   rules(payload, ctx); // fills in anything the model did not do
 }
 
@@ -760,7 +828,36 @@ export function verifyForCounter(txnId) {
 }
 
 // ---------------------------------------------------------------- chat agent
-const CHAT_TOOLS = ['get_sales_summary', 'get_hourly_pattern', 'list_pending_payments', 'check_payment_status', 'get_loan_offer', 'get_planner_insights', 'get_regular_customers', 'get_settlements', 'record_expenses', 'record_cash_sales', 'get_profit_summary', 'show_dashboard', 'check_loan_eligibility', 'add_note', 'save_answer_to_notes', 'change_note_dashboard', 'report_issue', 'show_style_choices', 'udhar_check', 'udhar_add', 'udhar_paid', 'customers_overview'];
+// The data behind every page of the app, so Voxa can answer about any of them.
+function appData(page) {
+  const S = E.getState();
+  const crm = S.crm || { customers: [], waLog: [] };
+  const pages = {
+    dashboard: () => ({
+      today: E.salesToday(), average_30_days: S.history.avg30, bank_balance: S.merchant.bankBalance, unsettled_today: S.merchant.unsettled,
+      last_7_days: E.salesSummary('week'), last_30_days: E.salesSummary('month'),
+      daily_sales_last_14_days: S.history.days.slice(-14).map((d) => ({ date: d.date, sales: d.total, bills: d.count })),
+      average_by_hour: S.history.hourly, yearly_by_month: S.history.monthly,
+    }),
+    payments: () => ({
+      payments: S.txns.map((t) => ({ ...E.paymentFacts(t), from: t.fromName, amount: t.amount, status: t.status, kind: t.kind })),
+      tickets: S.tickets.map((t) => ({ id: t.id, title: t.title, status: t.status, type: t.type, summary: String(t.summary || '').slice(0, 200) })),
+      settlements: S.settlements.slice(0, 10), offers: S.offers,
+    }),
+    insights: () => ({ planner: E.plannerInsights().map(({ title, text }) => ({ title, text })), regular_customers: E.regularsStatus(), hourly_pattern: E.hourlyInsight() }),
+    loan: () => ({ loan: S.loan, eligibility: E.loanProfile(), sample_plan: (() => { try { return E.loanPlan({}); } catch { return null; } })() }),
+    costs: () => ({ month: E.profitSummary(), expenses: S.expenses.map((e) => ({ month: e.month, category: e.label, amount: e.amount, note: e.note })), cash_sales: S.cashSales }),
+    notes: () => ({ notes: S.board.map((n) => ({ title: n.title, text: n.text, tag: n.tag, dashboard: n.card ? n.card.type : null })) }),
+    whatsapp: () => ({ connected: CRM.WA_LIVE, settings: crm.settings, recent_messages: (crm.waLog || []).slice(0, 15).map((m) => short(m)), owner_log: (crm.ownerLog || []).slice(0, 10).map((m) => short(m)) }),
+    customers: () => ({ reward: crm.reward, customers: crm.customers.map((cu) => ({ name: cu.name, loyalty_days: cu.visits.filter((d) => d > (cu.cardResetOn || '')).length, rewards_won: cu.rewards, Udhaar_due: CRM.balanceOf(cu), Udhaar_entries: cu.udhar.slice(-5).map((e) => ({ amount: e.amount, status: e.status, note: e.note })) })) }),
+  };
+  if (page !== 'all') return pages[page] ? pages[page]() : { error: 'unknown page', pages: Object.keys(pages) };
+  const out = {};
+  for (const k of Object.keys(pages)) { try { out[k] = pages[k](); } catch (e) { out[k] = { error: e.message }; } }
+  return out;
+}
+
+const CHAT_TOOLS = ['get_app_data', 'get_sales_summary', 'get_hourly_pattern', 'list_pending_payments', 'check_payment_status', 'get_loan_offer', 'get_planner_insights', 'get_regular_customers', 'get_settlements', 'record_expenses', 'record_cash_sales', 'get_profit_summary', 'show_dashboard', 'check_loan_eligibility', 'add_note', 'save_answer_to_notes', 'change_note_dashboard', 'report_issue', 'show_style_choices', 'udhar_check', 'udhar_add', 'udhar_paid', 'customers_overview'];
 
 // What is happening in the shop right now, so every answer starts from the live app, not a script.
 function shopSnapshot() {
@@ -778,7 +875,7 @@ function shopSnapshot() {
     S.tickets.filter((t) => t.status !== 'resolved').length ? `Open tickets: ${S.tickets.filter((t) => t.status !== 'resolved').map((t) => t.id + ' ' + t.title + ' (' + (t.status === 'needs_human' ? 'with support team' : 'waiting on bank') + ')').join('; ')}.` : '',
     `This month: sales ${rupee(month.revenue)}, costs noted ${rupee(month.costTotal)}${month.costs.length ? ' (' + month.costs.map((c) => c.label + ' ' + rupee(c.amount)).join(', ') + ')' : ' (none told yet)'}, left ${rupee(month.left)}.`,
     S.loan.status === 'active' ? `Loan: ${rupee(S.loan.outstanding)} left of ${rupee(S.loan.totalRepay)}, ${rupee(S.loan.daily)} taken daily.` : 'No loan running.',
-    (() => { const c = S.crm; if (!c || !c.customers.length) return ''; const due = c.customers.filter((cu) => CRM.balanceOf(cu) > 0); const wait = c.customers.flatMap((cu) => cu.udhar.filter((e) => e.status === 'pending').map((e) => cu.name + ' ' + rupee(e.amount))); return `WhatsApp customers: ${c.customers.length}.${due.length ? ' Kanakku due: ' + due.map((cu) => cu.name + ' ' + rupee(CRM.balanceOf(cu))).join(', ') + '.' : ''}${wait.length ? ' WAITING FOR HIS OK, repayments: ' + wait.join(', ') + '.' : ''}`; })(),
+    (() => { const c = S.crm; if (!c || !c.customers.length) return ''; const due = c.customers.filter((cu) => CRM.balanceOf(cu) > 0); const wait = c.customers.flatMap((cu) => cu.udhar.filter((e) => e.status === 'pending').map((e) => cu.name + ' ' + rupee(e.amount))); return `WhatsApp customers: ${c.customers.length}.${due.length ? ' Udhaar due: ' + due.map((cu) => cu.name + ' ' + rupee(CRM.balanceOf(cu))).join(', ') + '.' : ''}${wait.length ? ' WAITING FOR HIS OK, repayments: ' + wait.join(', ') + '.' : ''}`; })(),
     S.board.length ? `Voxa notes: ${S.board.slice(0, 5).map((n) => n.title).join('; ')}.` : '',
   ];
   return parts.filter(Boolean).join('\n');
@@ -789,12 +886,13 @@ const CHAT_SYSTEM = (lang) => {
   return `You are Voxa, the AI accountant inside Voxa Pay for Business (a demo with fake money). You are talking to Murugan, who owns ${S.merchant.name}, a small shop in ${S.merchant.area}. He is busy, not technical, and may speak Tamil, Hindi or English.
 He often speaks Tamil or Hindi written in English letters, or mixes them with English (for example "customer pay panna, aana payment varala" means the customer says they paid but the money has not come). Understand that and act on it. Never answer with a general list of what you can do; if the request is unclear, use the most likely tool or ask one short question.
 LANGUAGE RULE: always answer in the language of his latest message. If he speaks or writes Tamil (in Tamil script, or Tamil words in English letters), answer in Tamil script. If Hindi, answer in Hindi (Devanagari). If English, answer in English. Never switch language because an earlier message was in another language.
-Reply in ${LANG_NAMES[lang]} only (unless the language rule above says otherwise for English letters), in plain spoken words, because your reply is read aloud. No markdown, no bullet points, no tables. Be short and to the point: one or two short sentences, under 30 words, only the answer he needs. No greetings, no repeating his question, no extra advice, no offers like "anything else?". Give more detail only if he asks for it. Use Indian number format with ₹.
+Reply in ${LANG_NAMES[lang]} only (unless the language rule above says otherwise for English letters), in plain spoken words, because your reply is read aloud. No markdown, no bullet points, no tables. Be very short: one sentence, under 20 words, only the direct answer with the key number. Do not recite breakdowns; a button under your reply lets him open the dashboard, so never describe or offer one. No greetings, no repeating his question, no extra advice, no offers like "anything else?". Give more detail only if he asks for it. Use Indian number format with ₹.
 You are an agent: decide what to look up, call the tools, then answer. Answer exactly what he asked this time, with the numbers from this question; do not repeat an earlier answer if his question changed (a new amount, a new period, a new name). Think about what he is trying to do and give the most useful next step. Always use tools for numbers; never invent figures. Sales, payments, profit and loan tools add their dashboard under your reply by themselves, so do not call show_dashboard for those; answer right after you have the numbers. Ask for all the tools you need in one turn when you can. When he asks you to remember or keep something, save it with add_note, and attach a dashboard to the note when numbers are involved (for example dashboard "costs" for a costs note).
 Bill photos: you CAN read bills. If he wants to send a photo of a bill or many bills, say yes and tell him to tap the camera button next to the mic; you will read every line, add up the costs and save them. Never tell him you cannot read photos or ask him to type the amounts instead. When a payment is already done (outcome starts with DONE), say only how it ended, for example the bank was late and the money has now reached him; never mention deadlines or RBI for a finished payment. If a customer says they paid but the money has not come, check it with check_payment_status or list_pending_payments, then tell Murugan simply: the money is stuck at the bank and will reach him or go back to the customer by the deadline. Do not say who is right. You work only for Murugan and never message customers.
-Kanakku (கடன் கணக்கு, store credit; he may also say udhar, kadan or credit, all the same thing). Always call it kanakku in English replies and கணக்கு in Tamil replies, never udhar. Customers join his list by scanning the shop QR on WhatsApp. For 'can I give X credit?' use udhar_check and answer yes/careful/no with the reasons in one or two sentences. For 'X 2000 kanakku' or 'X 2000 udhar, keep it in log' use udhar_add. For 'X paid back' use udhar_paid. If the customer is not on the list, say they should scan the shop QR first. You can write Kanakku entries too, but never anything else about customers. Problems: if he reports a problem, says something does not add up, or asks you to complain or raise a ticket, check the payments first, then call report_issue with a clear summary for support, and tell him the ticket number in one sentence. Dashboards: you can build and change them, but only on your answers and his Voxa notes, never the app's own pages. When he wants a different look or has not said which look, call show_style_choices so he can tap a visual template; do not list chart types in words. If he names a look (pie, donut, bar, line, table), apply it directly. If he wants a different look (pie or donut, bars, columns, line, table) or different data or period, do it: for a dashboard in his notes use change_note_dashboard; for a new one use show_dashboard with the type, style and period he wants (save=true if he wants to keep it). Never say you cannot change a chart. If he asks you to add or save what you just said to the notes, call save_answer_to_notes (do not rewrite it with add_note). You may only change his Voxa notes (add_note, save_answer_to_notes, change_note_dashboard), his Costs & profit (record_expenses, record_cash_sales), and raise support tickets for him (report_issue); nothing else. Voxa notes (add_note, save_answer_to_notes) and Costs & profit (record_expenses, record_cash_sales). Never change sales, payments or the loan. Sales come only from his Paytm payments; cash sales and costs are only what he tells you, never a guess. If he tells you he sold some amount in cash, save it with record_cash_sales. If he tells you what he spent to run the shop (rent, electricity, salary, stock, transport and so on), save it with record_expenses, then tell him what is left this month. If stock purchases are missing, remind him the profit is not complete without them.
+Udhaar (store credit; he may also say kanakku, udhar, kadan or credit, all the same thing). Always call it Udhaar in every language (in Tamil and Hindi replies write it as Udhaar or the local word for store credit), never kanakku. Customers join his list by scanning the shop QR on WhatsApp. For 'can I give X credit?' use udhar_check and answer yes/careful/no with the reasons in one or two sentences. For 'X 2000 Udhaar' or 'X 2000 udhar, keep it in log' use udhar_add. For 'X paid back' use udhar_paid. If the customer is not on the list, say they should scan the shop QR first. You can write Udhaar entries too, but never anything else about customers. Problems: if he reports a problem, says something does not add up, or asks you to complain or raise a ticket, check the payments first, then call report_issue with a clear summary for support, and tell him the ticket number in one sentence. Dashboards: you can build and change them, but only on your answers and his Voxa notes, never the app's own pages. When he wants a different look or has not said which look, call show_style_choices so he can tap a visual template; do not list chart types in words. If he names a look (pie, donut, bar, line, table), apply it directly. If he wants a different look (pie or donut, bars, columns, line, table) or different data or period, do it: for a dashboard in his notes use change_note_dashboard; for a new one use show_dashboard with the type, style and period he wants (save=true if he wants to keep it). Never say you cannot change a chart. If he asks you to add or save what you just said to the notes, call save_answer_to_notes (do not rewrite it with add_note). You may only change his Voxa notes (add_note, save_answer_to_notes, change_note_dashboard), his Costs & profit (record_expenses, record_cash_sales), and raise support tickets for him (report_issue); nothing else. Voxa notes (add_note, save_answer_to_notes) and Costs & profit (record_expenses, record_cash_sales). Never change sales, payments or the loan. Sales come only from his Paytm payments; cash sales and costs are only what he tells you, never a guess. If he tells you he sold some amount in cash, save it with record_cash_sales. If he tells you what he spent to run the shop (rent, electricity, salary, stock, transport and so on), save it with record_expenses, then tell him what is left this month. If stock purchases are missing, remind him the profit is not complete without them.
 If he asks whether he can get a loan, call check_loan_eligibility with the amount he asked. Answer his exact amount: yes or no, why (the rule and his monthly sales), and what he can do now (the largest amount with its daily and monthly payment) or what would get him there. Loans are applied for in the Loan tab of this app; never mention another app. When explaining a loan, use get_loan_offer and explain it like to a friend: the daily amount taken from settlement, the monthly total, the total interest, the month it ends, and how much reaches his bank after the fee. He chooses the amount and months; the lender sets the rate from his profile. Most merchant plans have no charge for closing early, but he should check the Key Fact Statement. When something is worth remembering (a deadline, a loan detail, a request), save it with add_note. For advice on growing the shop use get_planner_insights; it only knows payments and what he told you, never his stock, so never guess what is on his shelves.
 Today is ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })}.
+You can see every page of the app: Dashboard, Payments, Insights, Loan, Costs & profit, Voxa notes, WhatsApp/Telegram and Customers. For any question about any page, or a question that spans pages, call get_app_data with that page (or "all") and answer from the real data, comparing and calculating as needed. Never say you cannot see a page.
 WHAT IS HAPPENING IN HIS SHOP RIGHT NOW (live from the app; use it, and if something here needs his attention, such as a stuck payment or money he owes, mention it briefly even if he did not ask):
 ${shopSnapshot()}`;
 };
@@ -809,11 +907,23 @@ export function maskPhones(t) {
   });
 }
 
-export async function chat(text, lang) {
+const scriptLang = (s) => (/[஀-௿]/.test(s) ? 'ta' : /[ऀ-ॿ]/.test(s) ? 'hi' : null);
+// Hindi / Tamil typed in English letters (Hinglish / Tanglish): count tell-tale words
+const ROMAN = {
+  hi: /\b(hai|hain|kya|kaise|kaisa|kaisi|kitna|kitni|kitne|mera|meri|mere|aaj|bikri|munafa|paisa|paise|hua|hui|rahi|raha|batao|bataiye|kharcha|nahi|nahin|kyun|kab|haan|accha|achha|dukaan|hafte|mahine)\b/gi,
+  ta: /\b(enna|epdi|eppadi|evvalavu|evlo|evalo|inniki|innaiku|indru|vikkanai|panam|sollu|sollunga|irukku|iruku|aachu|vanakkam|nanri|kadai|selavu|laabam|vaaram|maasam|enakku|unga|illa|aama)\b/gi,
+};
+const romanLang = (s) => {
+  const hi = (s.match(ROMAN.hi) || []).length, ta = (s.match(ROMAN.ta) || []).length;
+  return hi > ta ? 'hi' : ta > hi ? 'ta' : null;
+};
+
+// switchApp: the dashboard chat moves the whole app (screen + voice) to his language; WhatsApp does not
+export async function chat(text, heard, { switchApp = true } = {}) {
   const S = E.getState();
-  lang = ['en', 'ta', 'hi'].includes(lang) ? lang : S.merchant.lang;
-  // answer in the language he actually used: Tamil script → Tamil, Devanagari → Hindi
-  if (/[஀-௿]/.test(text)) lang = 'ta'; else if (/[ऀ-ॿ]/.test(text)) lang = 'hi';
+  // answer in the language he actually used: Tamil script → Tamil, Devanagari → Hindi,
+  // otherwise the language the speech recogniser heard, else English (the AI still spots Tanglish/Hinglish)
+  let lang = scriptLang(text) || (['en', 'ta', 'hi'].includes(heard) ? heard : null) || romanLang(text) || (switchApp ? 'en' : S.merchant.lang);
   S.chat.push({ role: 'user', text, lang, at: Date.now() });
   E.touch();
   const ctx = { agent: 'chat', source: BRAIN, said: text, cards: [] };
@@ -840,6 +950,9 @@ export async function chat(text, lang) {
     reply = rulesChat(text, lang, ctx);
   }
   const at = Date.now();
+  // the reply's script settles Tanglish/Hinglish typed in English letters; the whole app follows that language
+  lang = scriptLang(reply) || lang;
+  if (switchApp) S.merchant.lang = lang;
   S.chat.push({ role: 'assistant', text: reply, lang, at, source: ctx.source, cards: ctx.cards || [] });
   if (S.chat.length > 40) S.chat.splice(0, S.chat.length - 40);
   E.touch();
@@ -1140,20 +1253,61 @@ const BILL_TEXT = {
     hi: () => 'वह बिल पढ़ नहीं पाया। छपे हुए बिल की सीधी, साफ़ फ़ोटो अच्छी रोशनी में लें।',
   },
   notBill: {
-    en: () => 'That does not look like a bill, so I did not read it. Please send a photo of a printed bill or receipt only.',
-    ta: () => 'இது பில் போல் தெரியவில்லை, அதனால் படிக்கவில்லை. அச்சிட்ட பில் அல்லது ரசீதின் படத்தை மட்டும் அனுப்புங்கள்.',
-    hi: () => 'यह बिल जैसा नहीं लगता, इसलिए मैंने इसे नहीं पढ़ा। कृपया सिर्फ़ छपे बिल या रसीद की फ़ोटो भेजें।',
+    en: () => 'That does not look like a bill or a payment screenshot, so I did not read it. Please send a printed bill, receipt, or a payment screenshot only.',
+    ta: () => 'இது பில் அல்லது பணம் செலுத்திய ஸ்கிரீன்ஷாட் போல் தெரியவில்லை, அதனால் படிக்கவில்லை. அச்சிட்ட பில், ரசீது அல்லது பேமெண்ட் ஸ்கிரீன்ஷாட்டை மட்டும் அனுப்புங்கள்.',
+    hi: () => 'यह बिल या पेमेंट स्क्रीनशॉट जैसा नहीं लगता, इसलिए नहीं पढ़ा। सिर्फ़ छपा बिल, रसीद या पेमेंट स्क्रीनशॉट भेजें।',
   },
 };
 
-export async function readBill({ image, mediaType = 'image/jpeg', sample = null, lang, thumb = null }) {
+// A customer's payment screenshot is checked against the payments that really reached the shop.
+const nameKey = (s) => String(s || '').toLowerCase().replace(/[^a-z\u0b80-\u0bff\u0900-\u097f ]/g, ' ').split(/\s+/).filter((w) => w.length > 2);
+function verifyPaymentShot(r) {
+  const S = E.getState();
+  const pays = S.txns.filter((t) => t.kind === 'payment');
+  const amount = Math.round(Number(r.amount) || 0);
+  const utr = String(r.utr || '').replace(/\D/g, '');
+  const names = nameKey(r.party);
+  const nameOk = (t) => !names.length || nameKey(t.fromName).some((w) => names.some((n) => n.includes(w) || w.includes(n)));
+  const hints = r.tamper_hints && !/^none/i.test(String(r.tamper_hints)) ? String(r.tamper_hints).slice(0, 120) : '';
+  const byUtr = utr.length >= 8 ? pays.find((t) => String(t.utr) === utr) : null;
+  const facts = { amount, utr: utr || null, name: r.party || null, shown_status: r.shown_status || 'unknown' };
+  let verdict, txn = byUtr || null;
+  if (byUtr) {
+    if (byUtr.status === 'success' && amount && byUtr.amount === amount) verdict = nameOk(byUtr) ? 'genuine' : 'name_mismatch';
+    else if (byUtr.status === 'success') verdict = 'amount_mismatch';
+    else verdict = 'not_received';
+  } else {
+    const same = pays.filter((t) => amount && t.amount === amount && t.status === 'success' && nameOk(t));
+    if (same.length && !utr) { verdict = 'probably'; txn = same[0]; }
+    else if (utr) verdict = 'utr_unknown';
+    else verdict = 'no_match';
+  }
+  if (hints && (verdict === 'genuine' || verdict === 'probably')) verdict = 'genuine_but_edited';
+  return { verdict, txn, facts, hints };
+}
+const SHOT_TEXT = (v, t, f, hints, lang) => {
+  const a = rupee(f.amount || 0), who = (t && t.fromName) || f.name || 'the customer';
+  const M = {
+    genuine: { en: `Verified. ${who}'s ${a} reached your account (UTR ${t && t.utr}).`, ta: `சரிபார்த்தேன். ${who} அனுப்பிய ${a} உங்கள் கணக்கில் வந்துவிட்டது (UTR ${t && t.utr}).`, hi: `सत्यापित। ${who} के ${a} आपके खाते में आ गए (UTR ${t && t.utr})।` },
+    name_mismatch: { en: `The ${a} did reach you (UTR ${t && t.utr}), but from ${t && t.fromName}, not ${f.name}. Check whose payment this is.`, ta: `${a} வந்தது (UTR ${t && t.utr}), ஆனால் ${t && t.fromName} இடமிருந்து, ${f.name} அல்ல. யாருடைய பணம் என்று பாருங்கள்.`, hi: `${a} आए हैं (UTR ${t && t.utr}), पर ${t && t.fromName} से, ${f.name} से नहीं। देखिए यह किसका पेमेंट है।` },
+    probably: { en: `No reference number was readable, but a matching ${a} from ${who} did reach you. Looks genuine.`, ta: `எண் படிக்க முடியவில்லை, ஆனால் ${who} இடமிருந்து ${a} வந்துள்ளது. உண்மையாகத் தெரிகிறது.`, hi: `रेफ़रेंस नंबर पढ़ नहीं पाया, पर ${who} से ${a} आया है। असली लगता है।` },
+    genuine_but_edited: { en: `The ${a} from ${who} did reach you, but the screenshot looks edited (${hints}). Trust your account, not the screenshot.`, ta: `${who} அனுப்பிய ${a} வந்துள்ளது, ஆனால் ஸ்கிரீன்ஷாட் திருத்தப்பட்டது போல் தெரிகிறது (${hints}). கணக்கை நம்புங்கள்.`, hi: `${who} के ${a} आए हैं, पर स्क्रीनशॉट एडिट किया हुआ लगता है (${hints})। अपने खाते पर भरोसा करें।` },
+    amount_mismatch: { en: `Warning, possible fake. UTR ${t && t.utr} reached you for ${rupee(t && t.amount)}, but the screenshot says ${a}.`, ta: `எச்சரிக்கை, போலியாக இருக்கலாம். UTR ${t && t.utr} ${rupee(t && t.amount)} மட்டுமே வந்தது, ஆனால் ஸ்கிரீன்ஷாட்டில் ${a}.`, hi: `चेतावनी, नकली हो सकता है। UTR ${t && t.utr} से ${rupee(t && t.amount)} ही आए, पर स्क्रीनशॉट में ${a} है।` },
+    not_received: { en: `Not received yet. UTR ${t && t.utr} is ${t && t.status} in your account${t && t.status === 'pending' ? ', stuck between banks' : ''}. Do not hand over goods until it shows success.`, ta: `இன்னும் வரவில்லை. UTR ${t && t.utr} நிலை: ${t && t.status}. வெற்றி என்று வரும் வரை பொருள் கொடுக்காதீர்கள்.`, hi: `अभी नहीं आया। UTR ${t && t.utr} की स्थिति: ${t && t.status}। सफल दिखने तक सामान न दें।` },
+    utr_unknown: { en: `Warning, likely fake. No payment with UTR ${f.utr} reached your account.`, ta: `எச்சரிக்கை, போலியாக இருக்கலாம். UTR ${f.utr} கொண்ட பணம் உங்கள் கணக்கில் வரவில்லை.`, hi: `चेतावनी, शायद नकली। UTR ${f.utr} वाला कोई पेमेंट आपके खाते में नहीं आया।` },
+    no_match: { en: `Warning, likely fake. I found no ${f.amount ? a : ''} payment${f.name ? ' from ' + f.name : ''} in your account. Do not hand over goods.`, ta: `எச்சரிக்கை, போலியாக இருக்கலாம். ${f.amount ? a : ''} பணம் உங்கள் கணக்கில் இல்லை. பொருள் கொடுக்காதீர்கள்.`, hi: `चेतावनी, शायद नकली। आपके खाते में ${f.amount ? a : ''} का कोई पेमेंट नहीं मिला। सामान न दें।` },
+  };
+  return (M[v] || M.no_match)[lang] || M[v].en;
+};
+
+export async function readBill({ image, mediaType = 'image/jpeg', sample = null, lang, thumb = null, text: note = '' }) {
   const S = E.getState();
   lang = ['en', 'ta', 'hi'].includes(lang) ? lang : S.merchant.lang;
   const spoke = [...S.chat].reverse().find((m) => m.role === 'user' && m.lang);
   // follow him into Tamil or Hindi; never pull him back to English
   if (spoke && spoke.lang !== 'en' && spoke.lang !== lang) lang = spoke.lang;
   const known = sample && SAMPLE_BILLS[sample];
-  S.chat.push({ role: 'user', text: known ? `📷 ${known.label}` : '📷 Bill photo', lang, at: Date.now(), thumb });
+  S.chat.push({ role: 'user', text: (known ? `📷 ${known.label}` : '📷 Bill photo') + (note ? `\n${note}` : ''), lang, at: Date.now(), thumb });
   E.touch();
   const ctx = { agent: 'chat', source: BRAIN, said: known ? known.label : 'Bill photo', cards: [] };
   E.log({ agent: 'chat', source: ctx.source, type: 'event', name: 'bill_photo', input: known ? sample : mediaType, output: image ? `${Math.round((image.length * 3) / 4 / 1024)} KB image` : '', ms: 0 });
@@ -1164,14 +1318,22 @@ export async function readBill({ image, mediaType = 'image/jpeg', sample = null,
       const t0 = Date.now();
       const r = await SV.readBillImage({ imageB64: image, mediaType, langName: LANG_NAMES[lang], categories: ['stock', 'rent', 'electricity', 'salary', 'transport', 'phone', 'other'] });
       E.log({ agent: 'chat', source: 'sarvam', type: 'model', name: SV.VISION_MODEL, input: 'bill photo', output: r.is_bill ? `bill: ${r.title || ''}` : `not a bill: ${r.reason || ''}`, ms: Date.now() - t0 });
-      if (!r.is_bill) {
+      if (r.image_type === 'payment_screenshot') {
+        const v = verifyPaymentShot(r);
+        reply = SHOT_TEXT(v.verdict, v.txn, v.facts, v.hints, lang);
+        const mine = [...S.chat].reverse().find((m) => m.role === 'user' && m.thumb);
+        if (mine) mine.text = '📷 Payment screenshot' + (note ? `\n${note}` : '');
+        E.log({ agent: 'chat', source: 'sarvam', type: 'tool', name: 'verify_payment_screenshot', input: JSON.stringify(v.facts), output: v.verdict, ms: 0 });
+        ctx.cards = ctx.cards || [];
+        if (!ctx.cards.some((c) => c.type === 'payments')) ctx.cards.push({ type: 'payments' });
+      } else if (!r.is_bill) {
         reply = BILL_TEXT.notBill[lang]();
       } else {
         // only the bill's total counts, as one cost line; several bills in a month add up
         const total = Math.round(Number(r.total));
         const cats = ['stock', 'rent', 'electricity', 'salary', 'transport', 'phone', 'other'];
         const category = cats.includes(r.category) ? r.category : 'other';
-        const title = String(r.title || 'Bill').slice(0, 40) + (r.shop && r.shop !== 'null' ? ` · ${String(r.shop).slice(0, 30)}` : '');
+          const title = String(r.title || 'Bill').slice(0, 40) + (r.shop && r.shop !== 'null' ? ` · ${String(r.shop).slice(0, 30)}` : '');
         if (total > 0 && total < 10000000) {
           E.addExpenses([{ category, amount: total, note: title }], { source: 'sarvam', said: `📷 ${title}: ${rupee(total)}`, replace: false });
           const ps = E.profitSummary();
@@ -1180,10 +1342,39 @@ export async function readBill({ image, mediaType = 'image/jpeg', sample = null,
           ctx.cards = ctx.cards || [];
           if (!ctx.cards.some((c) => c.type === 'costs')) ctx.cards.push({ type: 'costs' });
           reply = (r.reply || '').trim() || BILL_TEXT.read[lang](title, rupee(total));
+          // the typed note may mention more costs (e.g. cash paid): let the brain save those too
+          if (note && BRAIN !== 'rules') {
+            const extra = `The bill total ${rupee(total)} is already saved, do not add it again. From my message, save only the other costs I mention: "${note}"`;
+            try {
+              const c = await chat(extra, lang, { switchApp: false });
+              const k = S.chat.findIndex((m) => m.role === 'user' && m.text === extra);
+              if (k >= 0) S.chat.splice(k, 1);
+              const k2 = S.chat.findIndex((m) => m.role === 'assistant' && m.at === (c && c.at));
+              if (k2 >= 0) S.chat.splice(k2, 1);
+              for (const x of S.expenses) if (x.said === extra) x.said = note.slice(0, 120);
+              if (c && c.reply) reply += ' ' + c.reply;
+              if (c && c.cards) for (const cd of c.cards) if (!ctx.cards.some((x) => x.type === cd.type)) ctx.cards.push(cd);
+            } catch (e) {}
+          }
         } else {
           reply = BILL_TEXT.cannot[lang]();
         }
       }
+    } catch (e) {
+      E.log({ agent: 'chat', source: 'rules', type: 'fallback', name: 'ai_error', input: '', output: e.message, ms: 0 });
+    }
+  }
+  if (BRAIN === 'gemini' && image && !reply) {
+    try {
+      reply = await runGemini({
+        system: CHAT_SYSTEM(lang),
+        messages: [{ role: 'user', parts: [
+          { inlineData: { mimeType: mediaType, data: image } },
+          { text: `This is a photo of a bill or receipt for my shop. Read it. Save its total as a shop running cost with record_expenses (choose the right category, for example stock for groceries; use the grand total to pay). If it has a due date, save it with add_note. ${note ? `My message with the photo: "${note}". Follow it, including any extra costs I mention (save those with record_expenses too). ` : ''}If it is not a bill, say so and save nothing. Then tell me in ${LANG_NAMES[lang]} what you read and saved, in one or two sentences.` },
+        ] }],
+        tools: toolList(['record_expenses', 'add_note', 'get_profit_summary']),
+        ctx,
+      });
     } catch (e) {
       E.log({ agent: 'chat', source: 'rules', type: 'fallback', name: 'ai_error', input: '', output: e.message, ms: 0 });
     }
@@ -1194,7 +1385,7 @@ export async function readBill({ image, mediaType = 'image/jpeg', sample = null,
         system: CHAT_SYSTEM(lang),
         messages: [{ role: 'user', content: [
           { type: 'image', source: { type: 'base64', media_type: mediaType, data: image } },
-          { type: 'text', text: `This is a photo of a bill or receipt for my shop. Read it. Save the shop running costs on it with record_expenses (choose the right category; use the total amount to pay). If it has a due date, save it with add_note. Then tell me in ${LANG_NAMES[lang]} what you read and saved, in one or two sentences.` },
+          { type: 'text', text: `This is a photo of a bill or receipt for my shop. Read it. Save the shop running costs on it with record_expenses (choose the right category; use the total amount to pay). If it has a due date, save it with add_note. Then tell me in ${LANG_NAMES[lang]} what you read and saved, in one or two sentences.${note ? ` My note about this bill: "${note}"` : ''}` },
         ] }],
         tools: toolList(['record_expenses', 'add_note', 'get_profit_summary']),
         ctx,

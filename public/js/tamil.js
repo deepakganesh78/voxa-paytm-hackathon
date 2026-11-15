@@ -85,7 +85,79 @@ window.VT = (() => {
     'Add': 'சேர்', 'Cash sales': 'ரொக்க விற்பனை', 'Only from Paytm': 'Paytm-இல் இருந்து மட்டும்',
     'You or Voxa can update this page. Adding the same kind of cost again replaces it.': 'நீங்களோ Voxa-வோ இந்தப் பக்கத்தை மாற்றலாம். அதே வகைச் செலவை மீண்டும் சேர்த்தால் பழையது மாறும்.',
   });
-  const tr0 = (k) => D[k] || null;
+  const H = {
+    'This screen': 'यह स्क्रीन', Screens: 'स्क्रीन', Dashboard: 'डैशबोर्ड', Payments: 'भुगतान', 'Sales insights': 'बिक्री की जानकारी',
+    Loan: 'लोन', 'Costs & profit': 'खर्च और मुनाफ़ा', 'Voxa notes': 'Voxa के नोट्स', 'Ask Voxa': 'Voxa से पूछें', Home: 'होम',
+    'Demo mode': 'डेमो मोड', 'Reset demo': 'डेमो रीसेट करें', 'Shop owner · Deepak': 'दुकान के मालिक · दीपक',
+    'Voxa agent runs in offline mode. Add a Claude key for full AI.': 'Voxa अभी ऑफ़लाइन मोड में चल रहा है।',
+    '· Voxa Pay for Business': '· Voxa Pay व्यापार', '· Customer': '· ग्राहक', '· Bank': '· बैंक', '· Merchant': '· व्यापारी', '· Support': '· सहायता',
+    'Dashboard overview': 'डैशबोर्ड का सारांश', 'Download report': 'रिपोर्ट डाउनलोड करें',
+    "Today's sales": 'आज की बिक्री', "Today's bills": 'आज के बिल', 'Average bill': 'औसत बिल',
+    'on this time yesterday': 'कल इसी समय के मुकाबले', 'on the 30-day average': '30 दिनों के औसत के मुकाबले',
+    'Settles tonight': 'आज रात बैंक में आएगा', 'Bank balance': 'बैंक बैलेंस', 'vs period before': 'पिछली अवधि के मुकाबले', 'vs last year': 'पिछले साल के मुकाबले',
+    'Sales overview': 'बिक्री का सारांश', 'This period': 'यह अवधि', 'Period before': 'पिछली अवधि', 'Same month last year': 'पिछले साल का यही महीना',
+    'Sales by time of day': 'दिन के समय के अनुसार बिक्री', "Share of an average day's sales": 'औसत दिन की बिक्री का हिस्सा',
+    'Morning, 7 AM–12': 'सुबह, 7–12', 'Afternoon, 12–5 PM': 'दोपहर, 12–5', 'Evening, 5–11 PM': 'शाम, 5–11', 'a normal day': 'सामान्य दिन', 'paid to you today': 'आज आपको मिला',
+    "Today's payments": 'आज के भुगतान', 'Received, stuck and refunded, by amount': 'मिली, अटकी और लौटाई गई रकम',
+    Received: 'मिला', Stuck: 'अटका', Refunded: 'लौटाया', 'Daily sales': 'रोज़ की बिक्री', 'Monthly sales': 'महीने की बिक्री',
+    Date: 'तारीख', Bills: 'बिल', Sales: 'बिक्री', Month: 'महीना', Today: 'आज', Week: 'हफ़्ता',
+    'Most recent earnings': 'हाल की कमाई', 'What reached you, what is stuck between banks and what went back': 'आप तक पहुँचा पैसा, बैंकों में अटका पैसा और लौटाई गई रकम',
+    'Stuck now': 'अभी अटका', 'Recent payments': 'हाल के भुगतान', 'Voxa updates': 'Voxa की जानकारी', 'in your language': 'आपकी भाषा में',
+    'Voxa posts payment alerts, fixes and tips here.': 'भुगतान की जानकारी, सुधार और सुझाव यहाँ दिखेंगे।',
+    Success: 'सफल', Pending: 'लंबित', Failed: 'विफल', Processing: 'प्रक्रिया में', 'Waiting for bank': 'बैंक का इंतज़ार',
+    'Payment stuck between banks': 'भुगतान बैंकों के बीच अटका है', 'Customer says paid: verify': 'ग्राहक ने भुगतान कहा है: जाँचें',
+    'Took cash instead': 'इसके बजाय नकद लिया', 'Paid twice': 'दो बार भुगतान हुआ', 'Voxa is checking this payment with the bank…': 'Voxa बैंक से इस भुगतान की जाँच कर रहा है…',
+    'Bank debit': 'बैंक से कटौती', Murugan: 'मुरुगन', Done: 'हो गया', 'no reply': 'जवाब नहीं', failed: 'विफल',
+    'Received today': 'आज मिला', 'All payments today': 'आज के सभी भुगतान', 'Voxa is following up': 'Voxa जानकारी ले रहा है', 'no money moved': 'पैसा नहीं गया',
+    '0 payments': '0 भुगतान', '1 payment': '1 भुगतान',
+    'Best day': 'सबसे अच्छा दिन', 'Weakest day': 'सबसे कम बिक्री वाला दिन', 'Best week': 'सबसे अच्छा हफ़्ता', 'Weakest week': 'सबसे कम बिक्री वाला हफ़्ता', 'Best month': 'सबसे अच्छा महीना', 'Weakest month': 'सबसे कम बिक्री वाला महीना',
+    'Monthly sales, this year vs last year': 'महीने की बिक्री: इस साल और पिछले साल', 'Same months a year before': 'पिछले साल के यही महीने',
+    'Voxa’s shop planner': 'Voxa की दुकान की योजना', 'Only from your payments and what you told Voxa. Voxa does not see your stock.': 'सिर्फ़ आपके भुगतानों और Voxa को बताई जानकारी के आधार पर। Voxa आपका स्टॉक नहीं देखता।',
+    '2 PM to 5 PM is your quiet time': 'दोपहर 2 से 5 बजे तक बिक्री का शांत समय है',
+    'The number of customers is steady, but each one buys a little less. Worth watching over the next weeks.': 'ग्राहकों की संख्या स्थिर है, लेकिन हर ग्राहक थोड़ा कम खरीद रहा है। अगले कुछ हफ़्तों तक इस पर नज़र रखें।',
+    'Based on: Average sales per hour, last 30 days': 'आधार: पिछले 30 दिनों की प्रति घंटे औसत बिक्री',
+    'Based on: Monthly sales, last 24 months': 'आधार: पिछले 24 महीनों की मासिक बिक्री',
+    'Based on: Payments by the same UPI ID': 'आधार: एक ही UPI ID से आए भुगतान',
+    'Based on: Average bill, last 30 days vs the 30 before': 'आधार: पिछले 30 दिनों और उससे पहले के 30 दिनों का औसत बिल',
+    'Based on: Bills you showed or told Voxa': 'आधार: आपके दिखाए या बताए बिल',
+    'My loan': 'मेरा लोन', 'Loan estimate calculator': 'लोन का अनुमान', 'You have no loan right now. Voxa checked your sales the way a lender would.': 'अभी आपका कोई लोन नहीं है। Voxa ने आपकी बिक्री को लोन देने वाली संस्था की तरह जाँचा।',
+    'Likely rate': 'संभावित ब्याज दर', Fee: 'शुल्क', '+ 18% GST, taken at the start': '+ 18% GST, शुरुआत में कटेगा', Repaid: 'चुकाया गया',
+    Daily: 'रोज़', 'a small amount from settlement': 'सेटलमेंट से थोड़ी रकम', 'Credit score': 'क्रेडिट स्कोर', Lender: 'लोन देने वाली संस्था', 'checks it, not Voxa': 'वह जाँचती है, Voxa नहीं',
+    'Active Voxa Pay for Business account': 'सक्रिय Voxa Pay व्यापार खाता', 'Regular money coming in': 'नियमित भुगतान मिलना', 'Sales almost every day': 'लगभग हर दिन बिक्री',
+    'Business is growing': 'व्यापार बढ़ रहा है', 'KYC and bank account linked': 'KYC और बैंक खाता जुड़ा है', 'See the estimate': 'अनुमान देखें',
+    'Estimate only. The lender decides the real amount, rate and fee. Source:': 'यह सिर्फ़ अनुमान है। असली रकम, ब्याज और शुल्क लोन देने वाली संस्था तय करेगी। स्रोत:',
+    'Loan amount': 'लोन की रकम', Interest: 'ब्याज', 'a year': 'सालाना', 'Pay every month': 'हर महीने की किस्त', 'Total interest': 'कुल ब्याज', 'Loan finishes': 'लोन पूरा होगा',
+    'Take this loan': 'यह लोन लें', "Use Voxa's guess": 'Voxa का अनुमान इस्तेमाल करें', Settlements: 'सेटलमेंट', 'nightly payout to your bank': 'हर रात बैंक में भुगतान',
+    'No settlement yet today. It runs in the evening.': 'आज अभी सेटलमेंट नहीं हुआ है। यह शाम को होगा।',
+    'Loan taken': 'लिया गया लोन', 'Taken every day': 'रोज़ कटेगा', 'Interest rate': 'ब्याज दर', 'Paid back so far': 'अब तक चुकाया', Active: 'चालू',
+    'a year, set by the lender': 'सालाना, लोन देने वाली संस्था तय करेगी',
+    'Voxa keeps this page for you': 'यह पेज Voxa आपके लिए रखता है',
+    'Tell Voxa what it cost to run your shop this month: rent, electricity, salary, stock. Speak in your own language. Voxa builds your profit picture here.': 'इस महीने दुकान चलाने के खर्च बताएँ: किराया, बिजली, वेतन और सामान। अपनी भाषा में Voxa से कहें। Voxa यहाँ आपके मुनाफ़े का हिसाब दिखाएगा।',
+    'Cost to run the shop': 'दुकान चलाने का खर्च', 'Loan payments': 'लोन की किस्तें', 'Left with you': 'आपके पास बचा', 'money that came in': 'मिला हुआ पैसा', 'taken from settlements': 'सेटलमेंट से कटा',
+    "Where this month's money went": 'इस महीने का पैसा कहाँ गया', 'Costs Voxa has noted': 'Voxa ने दर्ज किए खर्च', 'What you told Voxa': 'आपने Voxa को बताया',
+    'Only Voxa updates this page. To change a cost, just tell Voxa the new amount.': 'यह पेज सिर्फ़ Voxa अपडेट करता है। खर्च बदलने के लिए नई रकम Voxa को बताएँ।',
+    'Stock purchase': 'सामान की खरीद', Rent: 'किराया', Electricity: 'बिजली', 'Staff salary': 'कर्मचारियों का वेतन', Transport: 'आवागमन', 'Phone & internet': 'फ़ोन और इंटरनेट', 'Other costs': 'अन्य खर्च',
+    "Voxa's notes for you": 'आपके लिए Voxa के नोट्स',
+    'Voxa writes important things here: stuck payment deadlines, your loan, your monthly costs. You can also say “remember to pay the milk supplier on Friday”.': 'Voxa यहाँ ज़रूरी बातें लिखता है: अटके भुगतान की समय-सीमा, आपका लोन और महीने के खर्च। आप यह भी कह सकते हैं, “शुक्रवार को दूध वाले को पैसे देना याद दिलाना।”',
+    'Sound off': 'आवाज़ बंद', 'Sound on': 'आवाज़ चालू', Clear: 'मिटाएँ', 'Brain: offline rules · Voice: browser': 'दिमाग़: ऑफ़लाइन नियम · आवाज़: ब्राउज़र',
+    'Speak or type in Tamil, Hindi or English…': 'तमिल, हिंदी या अंग्रेज़ी में बोलें या लिखें…',
+    'Ask me anything about your shop, in Tamil, Hindi or English. Tap the mic and speak.': 'अपनी दुकान के बारे में तमिल, हिंदी या अंग्रेज़ी में पूछें। माइक दबाकर बोलें।',
+    'Open costs and profit': 'खर्च और मुनाफ़ा खोलें', 'Open sales insights': 'बिक्री की जानकारी खोलें', 'Open my loan': 'मेरा लोन खोलें', 'Open payments': 'भुगतान खोलें', 'Open Voxa notes': 'Voxa के नोट्स खोलें', 'Open insights': 'बिक्री की जानकारी खोलें',
+    'Voxa · offline mode': 'Voxa · ऑफ़लाइन मोड', 'Voxa · Claude': 'Voxa · Claude', 'Voxa is thinking…': 'Voxa सोच रहा है…',
+    'The last 5 payments': 'पिछले 5 भुगतान', 'Every payment that came in today, newest first': 'आज मिले सभी भुगतान, नए पहले',
+    Time: 'समय', From: 'किससे', Amount: 'रकम', Status: 'स्थिति', 'On its way': 'रास्ते में',
+    'Where these numbers come from': 'ये आँकड़े कहाँ से आए', 'Paytm sales': 'Paytm की बिक्री', 'Added automatically from every payment made to you on Paytm.': 'Paytm पर आपको मिले हर भुगतान से अपने-आप जोड़ा गया।',
+    'Cash sales and costs': 'नकद बिक्री और खर्च', 'Only what you add below or tell Voxa. Voxa never guesses a number.': 'सिर्फ़ वह जो आप नीचे जोड़ें या Voxa को बताएँ। Voxa कोई रकम नहीं गढ़ता।',
+    'Add it yourself': 'खुद जोड़ें', 'Cash sales or a cost Paytm cannot see. Adding the same kind again for this month replaces it.': 'नकद बिक्री या ऐसा खर्च जो Paytm नहीं देख सकता। इस महीने उसी तरह की रकम दोबारा जोड़ने पर पुरानी रकम बदल जाएगी।',
+    'Cash sales (not on Paytm)': 'नकद बिक्री (Paytm पर नहीं)', Add: 'जोड़ें', 'Cash sales': 'नकद बिक्री', 'Only from Paytm': 'सिर्फ़ Paytm से',
+    'You or Voxa can update this page. Adding the same kind of cost again replaces it.': 'आप या Voxa इस पेज को अपडेट कर सकते हैं। उसी तरह का खर्च दोबारा जोड़ने पर पुरानी रकम बदल जाएगी।',
+    'Saved to Voxa notes.': 'Voxa के नोट्स में सेव किया गया।', 'New chat. The last one is kept under Chats.': 'नई चैट शुरू हुई। पिछली चैट सूची में रहेगी।',
+    'New chat started. The last one is kept.': 'नई चैट शुरू हुई। पिछली चैट सुरक्षित है।',
+    'Speak to Voxa': 'Voxa से बोलकर पूछें', 'Take a photo of a bill': 'बिल की फ़ोटो लें', 'Upload a bill photo from your phone or computer': 'फ़ोन या कंप्यूटर से बिल की फ़ोटो अपलोड करें',
+    Upload: 'अपलोड करें', Chats: 'चैट', New: 'नई', 'Past chats': 'पुरानी चैट', 'Start a new chat; this one is kept': 'नई चैट शुरू करें; यह चैट सुरक्षित रहेगी',
+    'No suggestions yet.': 'अभी कोई सुझाव नहीं।', 'Voxa’s shop planner': 'Voxa की दुकान की योजना',
+  };
+  const tr0 = (k, locale) => (locale === 'hi' ? H[k] : D[k]) || null;
   // patterns for text with numbers or names in it
   const P = [
     [/^Home \/ Murugan and Co \/ (.+)$/, (m) => `முகப்பு / முருகன் அண்ட் கோ / ${tr0(m[1]) || m[1]}`],
@@ -125,12 +197,54 @@ window.VT = (() => {
     [/^(\d+):(\d+) (am|pm)$/i, (m) => `${m[1]}:${m[2]} ${/pm/i.test(m[3]) ? 'பிற்பகல்' : 'காலை'}`],
     [/^Paytm (₹[\d,]+) \+ cash (₹[\d,]+)$/, (m) => `Paytm ${m[1]} + ரொக்கம் ${m[2]}`],
   ];
-  function tr(raw) {
+  const WD_HI = { Sun: 'रवि', Mon: 'सोम', Tue: 'मंगल', Wed: 'बुध', Thu: 'गुरु', Fri: 'शुक्र', Sat: 'शनि' };
+  const MO_HI = { Jan: 'जन', Feb: 'फ़र', Mar: 'मार्च', Apr: 'अप्रैल', May: 'मई', Jun: 'जून', Jul: 'जुल', Aug: 'अग', Sep: 'सितं', Oct: 'अक्टू', Nov: 'नवं', Dec: 'दिसं' };
+  const FULL_MO_HI = { Jan: 'जनवरी', Feb: 'फ़रवरी', Mar: 'मार्च', Apr: 'अप्रैल', May: 'मई', Jun: 'जून', Jul: 'जुलाई', Aug: 'अगस्त', Sep: 'सितंबर', Oct: 'अक्टूबर', Nov: 'नवंबर', Dec: 'दिसंबर' };
+  const P_HI = [
+    [/^Home \/ Murugan and Co \/ (.+)$/, (m) => `होम / मुरुगन एंड कंपनी / ${tr0(m[1], 'hi') || m[1]}`],
+    [/^Last (\d+) days(.*)$/, (m) => `पिछले ${m[1]} दिन${m[1] === '1' ? '' : ''}${m[2]}`],
+    [/^Last (\d+) months(.*)$/, (m) => `पिछले ${m[1]} महीने${m[2]}`],
+    [/^last (\d+) (days|months)$/, (m) => `पिछले ${m[1]} ${m[2] === 'days' ? 'दिन' : 'महीने'}`],
+    [/^Sales · (.+)$/, (m) => `बिक्री · ${tr0(m[1], 'hi') || m[1].replace(/^Last (\d+) days$/, 'पिछले $1 दिन').replace(/^Last (\d+) months$/, 'पिछले $1 महीने')}`],
+    [/^vs the (\d+) days before$/, (m) => `पिछले ${m[1]} दिनों के मुकाबले`],
+    [/^The (\d+) days before$/, (m) => `उससे पहले के ${m[1]} दिन`],
+    [/^(\d+) (payment|payments)( · .*)?$/, (m) => `${m[1]} भुगतान${m[3] ? ' · ' + (tr0(m[3].slice(3), 'hi') || m[3].slice(3)) : ''}`],
+    [/^Daily sales for the last (\d+) days, next to the \d+ days before$/, (m) => `पिछले ${m[1]} दिनों की रोज़ की बिक्री, उससे पहले के ${m[1]} दिनों के मुकाबले`],
+    [/^Monthly sales for the last (\d+) months, next to the same months a year before$/, (m) => `पिछले ${m[1]} महीनों की बिक्री, पिछले साल के इन्हीं महीनों के मुकाबले`],
+    [/^Weekly sales over the last 90 days$/, () => 'पिछले 90 दिनों की साप्ताहिक बिक्री'],
+    [/^Daily sales, last (\d+) days vs the \d+ days before$/, (m) => `रोज़ की बिक्री: पिछले ${m[1]} दिन और उससे पहले के ${m[1]} दिन`],
+    [/^You look eligible for up to (₹[\d,]+)$/, (m) => `आप ${m[1]} तक के लोन के लिए योग्य हो सकते हैं`],
+    [/^a month · ([\d.]+)% a year$/, (m) => `महीने का · सालाना ${m[1]}%`],
+    [/^about (₹[\d,]+) a day$/, (m) => `रोज़ लगभग ${m[1]}`],
+    [/^plus (₹[\d,]+) one-time fee$/, (m) => `और एक बार का ${m[1]} शुल्क`],
+    [/^(\d+) months$/, (m) => `${m[1]} महीने`],
+    [/^(₹[\d,]+) reached your bank$/, (m) => `${m[1]} आपके बैंक में पहुँचे`],
+    [/^(₹[\d,]+) a month, from settlement$/, (m) => `सेटलमेंट से हर महीने ${m[1]}`],
+    [/^Sales · (\w+) (\d{4})$/, (m) => `बिक्री · ${FULL_MO_HI[m[1].slice(0, 3)] || m[1]} ${m[2]}`],
+    [/^(\d+) kinds of cost$/, (m) => `${m[1]} तरह के खर्च`],
+    [/^(\d+)% of sales$/, (m) => `बिक्री का ${m[1]}%`],
+    [/^Try: (.+)$/, (m) => `कहें: ${m[1]}`],
+    [/^No live payments yet\. (\d+) bills came in earlier today \((₹[\d,]+)\)\.$/, (m) => `अभी कोई लाइव भुगतान नहीं। आज पहले ${m[1]} बिल आए थे (${m[2]}).`],
+    [/^(Pongal|Tamil New Year|Vinayagar Chathurthi|Deepavali) is in about (\d+) weeks$/, (m) => `${{ Pongal: 'पोंगल', 'Tamil New Year': 'तमिल नववर्ष', 'Vinayagar Chathurthi': 'विनायक चतुर्थी', Deepavali: 'दीपावली' }[m[1]]} लगभग ${m[2]} हफ़्ते बाद है`],
+    [/^(.+) has not paid you in (\d+) days$/, (m) => `${m[1]} ने ${m[2]} दिनों से भुगतान नहीं किया`],
+    [/^Customers spend (₹[\d,]+) a visit, (down|up) from (₹[\d,]+)$/, (m) => `हर ग्राहक अब प्रति विज़िट ${m[1]} खर्च करता है; पहले ${m[3]} था`],
+    [/^from (.+) · (.+)$/, (m) => `${m[1]} से · ${m[2]}`],
+    [/^(₹[\d,]+) received$/, (m) => `${m[1]} मिले`],
+    [/^(₹[\d,]+) (more|less) than (₹[\d,]+)$/, (m) => `${m[3]} से ${m[1]} ${m[2] === 'more' ? 'ज़्यादा' : 'कम'}`],
+    [/^(₹[\d,]+) · (\d+)% (above|below) average$/, (m) => `${m[1]} · औसत से ${m[2]}% ${m[3] === 'above' ? 'ज़्यादा' : 'कम'}`],
+    [/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat), (\d+) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/, (m) => `${WD_HI[m[1]]}, ${m[2]} ${MO_HI[m[3]]}`],
+    [/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})$/, (m) => `${MO_HI[m[1]]} ${m[2]}`],
+    [/^(\d+) payments? · (₹[\d,]+)$/, (m) => `${m[1]} भुगतान · ${m[2]}`],
+    [/^(\d+):(\d+) (am|pm)$/i, (m) => `${m[1]}:${m[2]} ${/pm/i.test(m[3]) ? 'दोपहर' : 'सुबह'}`],
+    [/^Paytm (₹[\d,]+) \+ cash (₹[\d,]+)$/, (m) => `Paytm ${m[1]} + नकद ${m[2]}`],
+    [/^Voxa agent runs on (.+) \((.+)\)\.$/, (m) => `Voxa का AI ${m[1]} (${m[2]}) पर चलता है।`],
+  ];
+  function tr(raw, locale = lang) {
     const k = raw.trim();
     if (!k) return null;
-    const hit = tr0(k);
+    const hit = tr0(k, locale);
     if (hit) return raw.replace(k, hit);
-    for (const [re, fn] of P) { const m = k.match(re); if (m) return raw.replace(k, fn(m)); }
+    for (const [re, fn] of locale === 'hi' ? P_HI : P) { const m = k.match(re); if (m) return raw.replace(k, fn(m)); }
     return null;
   }
 
@@ -142,25 +256,31 @@ window.VT = (() => {
     });
     let n;
     while ((n = w.nextNode())) {
-      if (lang === 'ta') {
-        if (orig.has(n) && n.nodeValue === orig.get(n).out) continue;
-        const t = tr(n.nodeValue);
-        if (t !== null && t !== n.nodeValue) { orig.set(n, { src: n.nodeValue, out: t }); n.nodeValue = t; }
-      } else if (orig.has(n)) {
-        const o = orig.get(n);
-        if (n.nodeValue === o.out) n.nodeValue = o.src;
+      const old = orig.get(n);
+      const source = old && n.nodeValue === old.out ? old.src : n.nodeValue;
+      if (lang === 'en') {
+        if (old && n.nodeValue === old.out) n.nodeValue = source;
+        orig.delete(n);
+        continue;
+      }
+      const t = tr(source, lang);
+      if (t !== null && t !== source) {
+        orig.set(n, { src: source, out: t });
+        n.nodeValue = t;
+      } else {
+        if (old && n.nodeValue === old.out) n.nodeValue = source;
         orig.delete(n);
       }
     }
     document.querySelectorAll('[placeholder]').forEach((el) => {
       if (!el.dataset.phEn) el.dataset.phEn = el.placeholder;
-      el.placeholder = lang === 'ta' ? (tr(el.dataset.phEn) || el.dataset.phEn) : el.dataset.phEn;
+      el.placeholder = lang === 'en' ? el.dataset.phEn : (tr(el.dataset.phEn, lang) || el.dataset.phEn);
     });
-    document.documentElement.lang = lang === 'ta' ? 'ta' : 'en';
+    document.documentElement.lang = lang === 'en' ? 'en' : lang;
   }
   let queued = false;
   const obs = new MutationObserver(() => {
-    if (queued || lang !== 'ta') return;
+    if (queued || lang === 'en') return;
     queued = true;
     setTimeout(() => { queued = false; run(); }, 30); // not requestAnimationFrame: it pauses in background tabs
   });
@@ -169,6 +289,6 @@ window.VT = (() => {
     walk();
     obs.observe(document.body, { subtree: true, childList: true, characterData: true });
   }
-  function set(l) { if (l === lang && l === 'en') return; lang = l; run(); }
+  function set(l) { if (!['en', 'ta', 'hi'].includes(l) || l === lang) return; lang = l; run(); }
   return { set, tr };
 })();

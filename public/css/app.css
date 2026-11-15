@@ -124,7 +124,7 @@ input, select, textarea { font: inherit; font-size: 16px; color: inherit; }
 .side-card .btn { background: #fff; color: var(--side-b); border-color: #fff; min-height: 34px; font-size: 13px; }
 
 .topbar { position: sticky; top: 0; z-index: 30; height: 60px; display: flex; align-items: center; gap: 12px; padding: 0 20px; background: rgba(255, 255, 255, 0.92); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); }
-.topbar .icon-btn { width: 38px; height: 38px; border-radius: 10px; border: 0; background: transparent; display: grid; place-items: center; color: var(--ink-2); position: relative; }
+.topbar .icon-btn { flex: none; width: 38px; height: 38px; border-radius: 10px; border: 0; background: transparent; display: grid; place-items: center; color: var(--ink-2); position: relative; }
 @media (hover: hover) and (pointer: fine) { .topbar .icon-btn:hover { background: var(--surface-2); } }
 .topbar .icon-btn .pip { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--c-coral); box-shadow: 0 0 0 2px #fff; }
 .topbar .where { font-size: 14px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -460,3 +460,52 @@ button.r { width: 100%; border: 0; background: transparent; text-align: left; tr
 .lang-top button { min-height: 30px; padding: 0 12px; font-size: 13px; font-weight: 600; color: #2f45d9; }
 .lang-top button:hover:not(.on) { background: rgba(47, 69, 217, 0.1); }
 .lang-top button.on { background: #2f45d9; color: #fff; box-shadow: 0 2px 8px -2px rgba(47, 69, 217, 0.6); }
+
+/* ---------- phone and touch ---------- */
+html, body { overflow-x: clip; }
+body { min-height: 100dvh; overscroll-behavior-y: none; }
+/* the status bar / notch area belongs to the top bar when the app is installed on a phone */
+.topbar { padding-top: env(safe-area-inset-top); height: calc(60px + env(safe-area-inset-top)); }
+.page, .phone { padding-left: max(var(--page-pad, 14px), env(safe-area-inset-left)); padding-right: max(var(--page-pad, 14px), env(safe-area-inset-right)); }
+.phone { --page-pad: 16px; }
+@media (min-width: 641px) { .page { --page-pad: 24px; } }
+@media (max-width: 1023px) {
+  /* a closed menu must not leave its shadow on the screen edge or be reachable by keyboard/screen reader */
+  .side { visibility: hidden; box-shadow: none; width: min(300px, 86vw); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); transition: transform 260ms var(--ease-out), visibility 0s linear 260ms; }
+  body.side-open .side { visibility: visible; box-shadow: 0 0 40px rgba(0, 0, 0, 0.3); transition: transform 260ms var(--ease-out), visibility 0s; }
+  .drawer { visibility: hidden; box-shadow: none; transition: transform 280ms var(--ease-out), visibility 0s linear 280ms; }
+  body.drawer-open .drawer { visibility: visible; box-shadow: -20px 0 40px -20px rgba(10, 20, 50, 0.35); transition: transform 280ms var(--ease-out), visibility 0s; }
+}
+@media (max-width: 640px) {
+  /* two KPI cards a row on a phone, the headline one across the full width */
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .kpis > :first-child, .kpis > .hero-kpi { grid-column: 1 / -1; }
+  .kpi { padding: 14px 14px 12px; }
+  .kpi .v { font-size: 22px; }
+  .panel-head { padding: 14px 14px 0; }
+  .panel-body { padding: 12px 14px 14px; }
+  h1 { font-size: 22px; }
+}
+@media (max-width: 380px) {
+  .lang-top .lang-ico, .topbar .avatar { display: none; }
+  .lang-top button { padding: 0 9px; }
+  .topbar { gap: 6px; }
+  .live { margin: 0 2px; }
+}
+/* fingers need bigger targets than a mouse pointer */
+@media (pointer: coarse), (max-width: 640px) {
+  .btn { min-height: 44px; min-width: 44px; }
+  .btn.sm { min-height: 40px; }
+  .select, select.input { min-height: 46px; }
+  .chip { min-height: 40px; padding: 0 14px; font-size: 14px; }
+  .pills button { min-height: 40px; padding: 0 14px; }
+  .seg button { min-height: 38px; padding: 0 14px; }
+  .tabs button { min-height: 42px; }
+  .input { min-height: 46px; }
+  .topbar .icon-btn { width: 44px; height: 44px; }
+  .lang-top button { min-height: 38px; padding: 0 13px; }
+  .side a, .side button.side-link { padding: 12px 20px; }
+  .side-card .btn { min-height: 44px; }
+  .tq button { padding: 14px 16px; }
+}
+@media (pointer: coarse) and (max-width: 380px) { .lang-top button { padding: 0 10px; } }

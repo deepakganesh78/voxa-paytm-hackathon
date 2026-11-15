@@ -2,3 +2,10 @@ node_modules/
 .env
 *.log
 .data/
+.vercel/
+.vercel
+.env*
+video/node_modules/
+video/out/
+
+video/

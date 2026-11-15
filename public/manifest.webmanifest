@@ -1,0 +1,23 @@
+{
+  "name": "Voxa Pay",
+  "short_name": "Voxa",
+  "description": "Voxa Pay: payments, a shop dashboard and Voxa the AI accountant, in English, Tamil and Hindi.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef0f6",
+  "theme_color": "#2f45d9",
+  "lang": "en",
+  "categories": ["finance", "business"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Shop dashboard", "short_name": "Shop", "url": "/business", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Pay a shop", "short_name": "Pay", "url": "/pay", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}

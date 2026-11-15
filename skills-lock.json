@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "skills": {
+    "explainer-video": {
+      "source": "0xsline/OpenChatCut",
+      "sourceType": "github",
+      "skillPath": "src/agent/skills/explainer-video/SKILL.md",
+      "computedHash": "673d069ad3f03ddc6c46db3803c24b3db876a1815e1272e090f885c1e5d37bd0"
+    }
+  }
+}

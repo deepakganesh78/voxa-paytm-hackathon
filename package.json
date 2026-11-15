@@ -6,13 +6,18 @@
   "main": "server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --test test/recording.test.js test/tts.test.js",
+    "icons": "node scripts/make-icons.mjs",
+    "deploy": "node scripts/deploy-vercel.mjs",
+    "telegram": "node scripts/telegram-setup.mjs"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
+    "@vercel/functions": "^3.11.3",
     "@whiskeysockets/baileys": "^7.0.0-rc14",
     "express": "^4.21.2",
     "lucide": "^0.460.0"

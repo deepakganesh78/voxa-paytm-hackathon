@@ -72,9 +72,9 @@ In the customer's payment app (`/pay`), any payment can be reported with a reaso
 - The same brief is written for every ticket that reaches a person: ₹10,000+, not fixed in a day, settlement holds, wrong loan deductions, Murugan's own reports. The agent can press **Refresh** for a new one.
 - If Sarvam is down, a plain brief is built from the same facts.
 
-## 5c. Customers on Telegram (demo) / WhatsApp (production): loyalty card and Kanakku
+## 5c. Customers on Telegram (demo) / WhatsApp (production): loyalty card and Udhaar
 
-**Channel for the demo: Telegram bot** (free, official Bot API). Set `TELEGRAM_BOT_TOKEN` (from @BotFather) and `WA_PROVIDER=telegram` in `.env`. The poster QR opens the bot; the customer taps **Start**, taps YES to link their payment, and taps **Share my phone number** so Kanakku is kept under their real number. Buttons in the chat: YES / NO / SKIP, CARD, BALANCE, PAID 100, STOP. Voxa checks Telegram for new messages itself, so no public link is needed.
+**Channel for the demo: Telegram bot** (free, official Bot API). Set `TELEGRAM_BOT_TOKEN` (from @BotFather) and `WA_PROVIDER=telegram` in `.env`. The poster QR opens the bot; the customer taps **Start**, taps YES to link their payment, and taps **Share my phone number** so Udhaar is kept under their real number. Buttons in the chat: YES / NO / SKIP, CARD, BALANCE, PAID 100, STOP. Voxa checks Telegram for new messages itself, so no public link is needed.
 
 **Why not WhatsApp in the demo:** the official WhatsApp Business API (Meta, or Twilio on top of it) needs a verified business and a payment method before a number can message customers. The code for it is built (`WA_PROVIDER=meta` or `twilio`); switching is one setting. Linking a personal WhatsApp like WhatsApp Web (`WA_PROVIDER=linked`) also exists but is unofficial and was refused by WhatsApp in testing.
 
@@ -84,18 +84,18 @@ Everything below works the same on any channel.
 
 Messages go to **real WhatsApp numbers** through Twilio. There is no pretend chat on screen: if Twilio is not set up, nothing is sent and the Customers page says "Not connected".
 
-**Joining (zero typing):** Murugan prints the **Smart QR poster** from the **Customers & Kanakku** page. The customer scans it, WhatsApp opens with a message already typed, they tap **Send**. WhatsApp gives Voxa their number and name. If they just paid by UPI, Voxa asks "Was your payment just now ₹340 at 3:12 PM? YES / NO / SKIP": YES links their UPI name so visits count automatically. People who never use UPI can still join (SKIP) for Kanakku.
+**Joining (zero typing):** Murugan prints the **Smart QR poster** from the **Customers & Udhaar** page. The customer scans it, WhatsApp opens with a message already typed, they tap **Send**. WhatsApp gives Voxa their number and name. If they just paid by UPI, Voxa asks "Was your payment just now ₹340 at 3:12 PM? YES / NO / SKIP": YES links their UPI name so visits count automatically. People who never use UPI can still join (SKIP) for Udhaar.
 
 **7-day loyalty card:** each day a linked customer pays at the shop adds one dot (max one a day; no reset if they miss a day). After every payment they get "Your card: ●●●○○○○ (3 of 7)" on WhatsApp. At 7 they get the reward Murugan set on the Customers page (default ₹50 off), and a new card starts.
 
-**Kanakku (store credit), tied to the phone number, not UPI:**
-- Murugan tells Voxa "Suresh 2000 udhar, keep it in log" or uses **+ Kanakku** on the page. Suresh gets "₹2,000 added to your Kanakku. Total due: ₹2,000" on WhatsApp.
+**Udhaar (store credit), tied to the phone number, not UPI:**
+- Murugan tells Voxa "Suresh 2000 udhar, keep it in log" or uses **+ Udhaar** on the page. Suresh gets "₹2,000 added to your Udhaar. Total due: ₹2,000" on WhatsApp.
 - "Can I give Suresh ₹2,000 credit?" → Voxa's **credit check**: score, risk, suggested limit and yes / careful / no, from his visits, how he paid back before and what he owes now.
 - Paying back: the customer replies "PAID 500", or pays by UPI while owing. **Murugan must confirm** (on the page under "Waiting for your OK", or by replying CONFIRM on his own WhatsApp). Only then the balance drops and the customer gets the new balance. Murugan can also record a cash repayment with **Paid back**.
 
-**Customer replies:** CARD (their loyalty card), BALANCE (Kanakku due), PAID 500, STOP (leave: their number, link, card and Kanakku are deleted; Murugan is told what they owed).
+**Customer replies:** CARD (their loyalty card), BALANCE (Udhaar due), PAID 500, STOP (leave: their number, link, card and Udhaar are deleted; Murugan is told what they owed).
 
-**Murugan's own WhatsApp updates** (switch on/off on the Customers page): daily summary at a time he picks, stuck payment alerts, and Kanakku paid-back requests. "Send a test message" and "Send today's update now" buttons.
+**Murugan's own WhatsApp updates** (switch on/off on the Customers page): daily summary at a time he picks, stuck payment alerts, and Udhaar paid-back requests. "Send a test message" and "Send today's update now" buttons.
 
 **Setting up Twilio (once):** sign up at twilio.com → Messaging → Try it out → Send a WhatsApp message. Each test phone sends the sandbox join code to +1 415 523 8886. Add to `.env`: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM=whatsapp:+14155238886`, restart. For replies from phones to reach Voxa, set the sandbox's "When a message comes in" URL to `https://<your public link>/api/whatsapp/incoming`.
 

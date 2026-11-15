@@ -1,4 +1,4 @@
-// Customers on WhatsApp: join by QR, 7-day loyalty card, Kanakku (store credit) with a credit score.
+// Customers on WhatsApp: join by QR, 7-day loyalty card, Udhaar (store credit) with a credit score.
 // Messages go to REAL WhatsApp numbers through Twilio (sandbox for now). Nothing is faked on screen:
 // if Twilio is not set up, messages are not sent and the app says WhatsApp is not connected.
 import * as E from './engine.js';
@@ -38,7 +38,7 @@ const id = (p) => p + Math.random().toString(36).slice(2, 8).toUpperCase();
 
 // "+91 98xxxxxxxx" / "whatsapp:+9198..." / "98xxxxxxxx" → "+9198xxxxxxxx"
 export function normPhone(p) {
-  if (/^(lid|tg):/.test(String(p || ''))) return String(p);
+  if (/^(lid|tg|upi):/.test(String(p || ''))) return String(p);
   let d = String(p || '').replace(/^whatsapp:/, '').replace(/[^\d+]/g, '');
   if (!d) return '';
   if (d.startsWith('+')) return d;
@@ -69,7 +69,7 @@ async function textTemplate() {
 }
 
 // Every message goes through here. Only a short log is kept (who, what, sent or why not); there is no chat screen.
-export async function waSend(phone, text) {
+export async function waSend(phone, text, opts = {}) {
   const to = normPhone(phone);
   const c = C();
   const entry = { id: id('W'), at: Date.now(), to: mask(to), text: String(text).slice(0, 500), status: 'not_sent' };
@@ -81,7 +81,7 @@ export async function waSend(phone, text) {
     try {
       const chat = (C().tgChat && C().tgChat[to]) || (to.startsWith('tg:') ? to.slice(3) : null);
       if (!chat) throw new Error('This customer has not started the Telegram bot');
-      entry.sid = await TG.send(chat, text);
+      entry.sid = await TG.send(chat, text, opts);
       entry.status = 'sent';
     } catch (e) { entry.status = 'failed'; entry.reason = e.message; }
     E.log({ agent: 'whatsapp', source: 'telegram', type: 'tool', name: 'message_send', input: mask(to), output: entry.status + (entry.reason ? ': ' + entry.reason : ''), ms: 0 });
@@ -143,24 +143,26 @@ export async function waSend(phone, text) {
 }
 
 // To Murugan, only if he switched it on in the app (and that kind of message is on).
-export function toMerchant(kind, text) {
+export function toMerchant(kind, text, opts) {
   const s = C().settings;
   if (!s.enabled) return null;
   if (kind && s[kind] === false) return null;
-  return sendToOwner(text);
+  return sendToOwner(text, opts);
 }
 // straight to Murugan: his linked bot chat, or his number
-export function sendToOwner(text) {
+export function sendToOwner(text, opts) {
   const c = C(), s = c.settings;
-  if (PROVIDER === 'telegram' && c.ownerChatId) return waSend('tg:' + c.ownerChatId, text);
+  if (PROVIDER === 'telegram' && c.ownerChatId) return waSend('tg:' + c.ownerChatId, text, opts);
   if (!s.merchantPhone) return null;
-  return waSend(s.merchantPhone, text);
+  return waSend(s.merchantPhone, text, opts);
 }
 // Murugan asks Voxa from his phone: the server plugs Voxa's chat in here
 let ownerChat = null;
 export function setOwnerChat(fn) { ownerChat = fn; }
 export function ownerCode() {
   const c = C();
+  // with a bot, the code comes from its token: every server copy agrees on it and nobody can guess it
+  if (TG.TG_ON) return 'OWNER-' + TG.SECRET.slice(0, 8).toUpperCase();
   if (!c.ownerCode) { c.ownerCode = 'OWNER-' + Math.random().toString(36).slice(2, 8).toUpperCase(); E.touch(); }
   return c.ownerCode;
 }
@@ -214,8 +216,8 @@ export async function handleIncoming(fromRaw, profileName, bodyRaw, sid = null) 
     if (cu) {
       const owed = balanceOf(cu);
       c.customers = c.customers.filter((x) => x !== cu);
-      E.notify('merchant', { kind: 'voxa', text: `${cu.name} left your WhatsApp list; their details are deleted.${owed > 0 ? ' They still owed ' + rupee(owed) + ' on Kanakku.' : ''}`, speak: false });
-      toMerchant('udharAlerts', `${cu.name} left your Murugan and Co list.${owed > 0 ? ' They owed ' + rupee(owed) + ' on Kanakku.' : ''}`);
+      E.notify('merchant', { kind: 'voxa', text: `${cu.name} left your WhatsApp list; their details are deleted.${owed > 0 ? ' They still owed ' + rupee(owed) + ' on Udhaar.' : ''}`, speak: false });
+      toMerchant('udharAlerts', `${cu.name} left your Murugan and Co list.${owed > 0 ? ' They owed ' + rupee(owed) + ' on Udhaar.' : ''}`);
       E.touch();
     }
     await waSend(phone, 'You have left Murugan and Co rewards. All your details are deleted. Send JOIN any time to come back.');
@@ -235,12 +237,16 @@ export async function handleIncoming(fromRaw, profileName, bodyRaw, sid = null) 
     const recent = E.getState().txns.find((x) => x.kind === 'payment' && x.status === 'success' && Date.now() - x.createdAt < 10 * 60000 && !claimed.has(x.fromName));
     E.notify('merchant', { kind: 'voxa', text: `${name !== 'Customer' ? name : 'A new customer'} joined your customer list on WhatsApp.`, speak: false });
     E.touch();
-    if (recent) {
+    const placeholder = c.customers.find((x) => x !== cu && x.addedByOwner && String(x.phone).startsWith('upi:'));
+    if (placeholder) {
+      cu.pendingMerge = placeholder.id;
+      await waSend(phone, `Welcome to Murugan and Co rewards${name !== 'Customer' ? ', ' + name : ''}! Murugan already started a rewards card for ${placeholder.upiName} (${loyaltyCount(placeholder)} of ${LD()} visits). Is that you? Reply YES to get it here, or NO.`);
+    } else if (recent) {
       cu.pendingLink = recent.id;
       await waSend(phone, `Welcome to Murugan and Co rewards${name !== 'Customer' ? ', ' + name : ''}! Was your payment just now ${rupee(recent.amount)} at ${E.timeLabel(recent.createdAt)}? Reply YES to link it (your visits then count automatically), NO, or SKIP if you don't pay by UPI.`);
     } else {
       await waSend(phone, `Welcome to Murugan and Co rewards${name !== 'Customer' ? ', ' + name : ''}! Pay by UPI as usual: each visit fills your card. After ${LD()} visits you get ${c.reward}. Reply STOP any time to leave.`);
-      if (phone.startsWith('tg:')) await waSend(phone, 'One more step: tap the button below to share your phone number, so Murugan can keep your Kanakku (credit) under your number.');
+      if (phone.startsWith('tg:')) await waSend(phone, 'One more step: tap the button below to share your phone number, so Murugan can keep your Udhaar (credit) under your number.');
     }
     return;
   }
@@ -256,18 +262,35 @@ export async function handleIncoming(fromRaw, profileName, bodyRaw, sid = null) 
     return;
   }
 
+  // claim a card Murugan started from a UPI payment
+  if (cu.pendingMerge && /^(yes|y|ஆம்|हाँ)\b/i.test(t)) {
+    const old = c.customers.find((x) => x.id === cu.pendingMerge);
+    cu.pendingMerge = null;
+    if (old) claimCard(cu, old);
+    E.touch();
+    await waSend(phone, `Done! Your card: ${dots(loyaltyCount(cu))} (${loyaltyCount(cu)} of ${LD()}). After ${LD()} visits you get ${c.reward}.`);
+    if (cu.phone.startsWith('tg:')) await waSend(phone, 'One more step: tap the button below to share your phone number, so Murugan can keep your Udhaar (credit) under your number.');
+    return;
+  }
+  if (cu.pendingMerge && /^(no|n|skip)\b/i.test(t)) { cu.pendingMerge = null; E.touch(); await waSend(phone, 'OK, you are on the list.'); return; }
+
   // link their UPI payment
   if (cu.pendingLink && /^(yes|y|ஆம்|हाँ)\b/i.test(t)) {
     const txn = E.findTxn(cu.pendingLink);
     cu.pendingLink = null;
     if (txn) {
-      cu.upiName = txn.fromName;
-      if (!cu.name || cu.name === 'Customer') { const p = E.payerById(txn.payerId); cu.name = (p && p.fullName) || txn.fromName; }
-      addVisit(cu, txn, false);
+      // Murugan may already have started a card for this payer: take it over instead of making a second one
+      const started = c.customers.find((x) => x !== cu && x.addedByOwner && x.upiName === txn.fromName);
+      if (started) claimCard(cu, started);
+      else {
+        cu.upiName = txn.fromName;
+        if (!cu.name || cu.name === 'Customer') { const p = E.payerById(txn.payerId); cu.name = (p && p.fullName) || txn.fromName; }
+        addVisit(cu, txn, false);
+      }
     }
     E.touch();
     await waSend(phone, `Linked. Your card: ${dots(loyaltyCount(cu))} (${loyaltyCount(cu)} of ${LD()}). After ${LD()} visits you get ${c.reward}.`);
-    if (cu.phone.startsWith('tg:')) await waSend(phone, 'One more step: tap the button below to share your phone number, so Murugan can keep your Kanakku (credit) under your number.');
+    if (cu.phone.startsWith('tg:')) await waSend(phone, 'One more step: tap the button below to share your phone number, so Murugan can keep your Udhaar (credit) under your number.');
     return;
   }
   if (cu.pendingLink && /^(no|n|skip)\b/i.test(t)) {
@@ -281,9 +304,9 @@ export async function handleIncoming(fromRaw, profileName, bodyRaw, sid = null) 
     await waSend(phone, `Your Murugan and Co card: ${dots(loyaltyCount(cu))} (${loyaltyCount(cu)} of ${LD()}). Reward at ${LD()}: ${c.reward}.`);
     return;
   }
-  if (/balance|kanakku|udhar|due|kadan|கணக்கு|கடன்|பாக்கி/i.test(t) && !/paid/i.test(t)) {
+  if (/balance|Udhaar|udhar|due|kadan|கணக்கு|கடன்|பாக்கி/i.test(t) && !/paid/i.test(t)) {
     const b = balanceOf(cu);
-    await waSend(phone, b > 0 ? `Your Kanakku at Murugan and Co: ${rupee(b)} due.` : 'Nothing is due on your kanakku at Murugan and Co.');
+    await waSend(phone, b > 0 ? `Your Udhaar at Murugan and Co: ${rupee(b)} due.` : 'Nothing is due on your Udhaar at Murugan and Co.');
     return;
   }
 
@@ -291,7 +314,7 @@ export async function handleIncoming(fromRaw, profileName, bodyRaw, sid = null) 
   const m = t.match(/paid\s*(?:back)?\s*(?:rs\.?|₹)?\s*([\d,]+)?/i) || t.match(/கட்டி(?:னேன்|ட்டேன்)\s*([\d,]+)?/);
   if (m) {
     const owed = balanceOf(cu);
-    if (owed <= 0) { await waSend(phone, 'Nothing is due on your kanakku at Murugan and Co. Thank you!'); return; }
+    if (owed <= 0) { await waSend(phone, 'Nothing is due on your Udhaar at Murugan and Co. Thank you!'); return; }
     const amt = Math.min(owed, Number(String(m[1] || '').replace(/,/g, '')) || owed);
     repayClaim(cu, amt, 'customer said on WhatsApp');
     await waSend(phone, `Thanks! I have asked Murugan to confirm ${rupee(amt)} paid back. You will get your new balance here.`);
@@ -305,6 +328,17 @@ export async function handleIncoming(fromRaw, profileName, bodyRaw, sid = null) 
 }
 
 // ---------------- loyalty ----------------
+// a customer takes over the card Murugan started from a UPI payment (visits, rewards and Udhaar move across)
+function claimCard(cu, old) {
+  cu.upiName = old.upiName;
+  cu.visits = [...new Set([...old.visits, ...cu.visits])].sort();
+  cu.cardResetOn = old.cardResetOn || cu.cardResetOn;
+  cu.rewards += old.rewards;
+  cu.udhar = [...old.udhar, ...cu.udhar];
+  if (old.name && (!cu.name || cu.name === 'Customer')) cu.name = old.name;
+  const c = C();
+  c.customers = c.customers.filter((x) => x !== old);
+}
 function addVisit(cu, txn, announce = true) {
   // one visit per payment (demo setting) or one per day; ISO times sort after plain dates, so both mix safely
   const d = C().perPayment !== false ? new Date(txn.createdAt).toISOString() : new Date(txn.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -323,30 +357,65 @@ function addVisit(cu, txn, announce = true) {
   return true;
 }
 
-// every successful payment from a linked customer: loyalty, and a question to Murugan if they owe Kanakku
+// every successful payment: loyalty for a linked customer (and a question to Murugan if they owe Udhaar);
+// from anyone else, an offer to add them to the loyalty programme
 export function onPaymentSuccess(txn) {
   const cu = C().customers.find((x) => x.upiName && x.upiName === txn.fromName);
-  if (!cu) return;
+  if (!cu) { offerLoyalty(txn); return; }
   addVisit(cu, txn, true);
   const owed = balanceOf(cu);
-  if (owed > 0) repayClaim(cu, Math.min(owed, txn.amount), `UPI payment ${rupee(txn.amount)} at ${E.timeLabel(txn.createdAt)}: is this a kanakku repayment?`, txn.id);
+  if (owed > 0) repayClaim(cu, Math.min(owed, txn.amount), `UPI payment ${rupee(txn.amount)} at ${E.timeLabel(txn.createdAt)}: is this a Udhaar repayment?`, txn.id);
 }
 
-// ---------------- Kanakku ----------------
+// A payment from someone who is not on the loyalty programme:
+// 1. customers who already joined (scanned the QR) but never linked a payment are asked "Was that you?" (YES / NO buttons)
+// 2. Murugan gets a message with an "Add to loyalty programme" button
+function offerLoyalty(txn) {
+  const c = C();
+  if (txn.kind && txn.kind !== 'payment') return;
+  if (txn.loyaltyOffered) return;
+  txn.loyaltyOffered = true;
+  const when = E.timeLabel(txn.createdAt);
+  const unlinked = c.customers.filter((x) => !x.upiName && !x.pendingLink && !String(x.phone).startsWith('upi:')).slice(0, 5);
+  for (const x of unlinked) {
+    x.pendingLink = txn.id;
+    waSend(x.phone, `Thanks for paying Murugan and Co ${rupee(txn.amount)} at ${when}! Was that you? Reply YES to add this visit to your rewards card, or NO.`);
+  }
+  toMerchant('loyaltyAlerts', `${rupee(txn.amount)} from ${txn.fromName} at ${when}. ${txn.fromName} is not on your loyalty programme yet.`,
+    { inline: [[{ text: `➕ Add ${txn.fromName} to loyalty programme`, callback_data: 'addloy:' + txn.id }]] });
+}
+
+// Murugan tapped "Add to loyalty programme": a card is started from their UPI name, and the visit is counted.
+// When that customer later scans the QR poster in Telegram, they are asked to claim this card (see the join step).
+export function addToLoyalty(txnId) {
+  const c = C();
+  const txn = E.findTxn(txnId);
+  if (!txn) return { ok: false, text: 'I could not find that payment any more.' };
+  const existing = c.customers.find((x) => x.upiName && x.upiName === txn.fromName);
+  if (existing) return { ok: true, text: `${existing.name} is already on the loyalty programme. Card: ${dots(loyaltyCount(existing))} (${loyaltyCount(existing)} of ${LD()}).` };
+  const p = E.payerById(txn.payerId);
+  const cu = { id: id('C'), phone: 'upi:' + txn.fromName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name: (p && p.fullName) || txn.fromName, joinedAt: Date.now(), upiName: txn.fromName, visits: [], cardResetOn: '', rewards: 0, udhar: [], pendingLink: null, addedByOwner: true };
+  c.customers.unshift(cu);
+  addVisit(cu, txn, false);
+  E.touch();
+  return { ok: true, text: `Added ${cu.name} to the loyalty programme. Card: ${dots(loyaltyCount(cu))} (${loyaltyCount(cu)} of ${LD()}). Every UPI payment from them now fills the card. They can scan your poster QR to get the card in Telegram.` };
+}
+
+// ---------------- Udhaar ----------------
 export function addCredit(cu, amount, note = '') {
   const a = Math.round(Number(amount));
   if (!(a > 0)) throw new Error('Enter an amount');
   cu.udhar.push({ id: id('U'), type: 'credit', amount: a, note: String(note).slice(0, 120), at: Date.now(), status: 'confirmed' });
   E.touch();
   const b = balanceOf(cu);
-  waSend(cu.phone, `Murugan and Co: ${rupee(a)} added to your Kanakku${note ? ' (' + note + ')' : ''}. Total due: ${rupee(b)}.`);
+  waSend(cu.phone, `Murugan and Co: ${rupee(a)} added to your Udhaar${note ? ' (' + note + ')' : ''}. Total due: ${rupee(b)}.`);
   return { balance: b };
 }
 export function repayClaim(cu, amount, why = '', txnId = null) {
   const e = { id: id('U'), type: 'repay', amount: Math.round(amount), note: why, at: Date.now(), status: 'pending', txnId };
   cu.udhar.push(e);
-  E.notify('merchant', { kind: 'voxa', text: `${cu.name} says they paid back ${rupee(e.amount)} on their kanakku. Confirm it on the Customers page.`, speak: true });
-  toMerchant('udharAlerts', `Voxa: ${cu.name} paid back ${rupee(e.amount)} on their kanakku? ${why ? '(' + why + ') ' : ''}Reply CONFIRM or REJECT, or confirm in the app.`);
+  E.notify('merchant', { kind: 'voxa', text: `${cu.name} says they paid back ${rupee(e.amount)} on their Udhaar. Confirm it on the Customers page.`, speak: true });
+  toMerchant('udharAlerts', `Voxa: ${cu.name} paid back ${rupee(e.amount)} on their Udhaar? ${why ? '(' + why + ') ' : ''}Reply CONFIRM or REJECT, or confirm in the app.`);
   E.touch();
   return e;
 }
@@ -360,7 +429,7 @@ export function confirmRepay(entryId) {
   f.e.status = 'confirmed'; f.e.confirmedAt = Date.now();
   E.touch();
   const b = balanceOf(f.cu);
-  waSend(f.cu.phone, `Murugan and Co confirmed ${rupee(f.e.amount)} paid back. ${b > 0 ? 'Kanakku still due: ' + rupee(b) + '.' : 'Your Kanakku is fully cleared. Thank you!'}`);
+  waSend(f.cu.phone, `Murugan and Co confirmed ${rupee(f.e.amount)} paid back. ${b > 0 ? 'Udhaar still due: ' + rupee(b) + '.' : 'Your Udhaar is fully cleared. Thank you!'}`);
   return { balance: b };
 }
 export function rejectRepay(entryId) {
@@ -393,7 +462,7 @@ export function creditScore(cu, ask = 0) {
   const limit = score >= 70 ? 3000 : score >= 45 ? 1000 : 300;
   const reasons = [
     visits30 ? `Visits ${visits30} days in the last month${avgBill ? ', average bill ' + rupee(avgBill) : ''}` : 'No visits recorded yet',
-    credits.length ? `Used kanakku ${credits.length} time(s); paid back on time ${onTime}, late ${late}` : 'Never used kanakku here before',
+    credits.length ? `Used Udhaar ${credits.length} time(s); paid back on time ${onTime}, late ${late}` : 'Never used Udhaar here before',
     owed > 0 ? `Owes ${rupee(owed)} now` : 'Owes nothing now',
   ];
   const verdict = ask ? (ask <= limit - Math.max(0, owed) ? 'yes' : ask <= limit ? 'careful' : 'no') : null;
@@ -412,7 +481,7 @@ export function dailySummaryText() {
   return [
     `Voxa daily update, Murugan and Co: ${t.bills} payments today, ${rupee(t.total)} (a usual day: ${rupee(usual)}).`,
     stuck.length ? `Stuck: ${stuck.map((x) => x.fromName + ' ' + rupee(x.amount)).join(', ')}.` : 'No stuck payments.',
-    owedAll ? `Kanakku due from customers: ${rupee(owedAll)}.` : '',
+    owedAll ? `Udhaar due from customers: ${rupee(owedAll)}.` : '',
     top.length ? `Most regular this week: ${top.map((x) => x.cu.name + ' (' + x.n + '/' + LD() + ')').join(', ')}.` : '',
   ].filter(Boolean).join('\n');
 }
@@ -456,9 +525,15 @@ export function unlinkOwner() { const c = C(); c.ownerChatId = null; c.ownerName
 
 // Telegram: customers start the bot from the poster, then can share their phone with one tap
 if (PROVIDER === 'telegram') {
-  TG.start(async ({ chatId, name, text, contactPhone, id }) => {
+  TG.start(async ({ chatId, name, text, contactPhone, id, callback }) => {
     const c = C();
     c.tgChat = c.tgChat || {};
+    // a tap on a button under one of Voxa's messages
+    if (callback) {
+      if (!(c.ownerChatId && String(chatId) === String(c.ownerChatId))) return;
+      if (callback.startsWith('addloy:')) { const r = addToLoyalty(callback.slice(7)); await waSend('tg:' + chatId, r.text); }
+      return;
+    }
     const raw = String(text || '');
     // Murugan links his own chat by scanning the owner QR on the WhatsApp page
     if (raw.startsWith('/start ') && raw.slice(7).trim() === ownerCode()) {

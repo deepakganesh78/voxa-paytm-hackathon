@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import * as E from './src/engine.js';
 import * as A from './src/agent.js';
 import * as CRM from './src/crm.js';
+import * as TG from './src/telegram.js';
 import { SKILLS } from './src/skills.js';
 import { msg, rupee, SPEECH_CODES } from './src/i18n.js';
 
@@ -17,14 +18,25 @@ app.use(express.static(path.join(here, 'public'), { extensions: ['html'] }));
 // icons served locally so the demo still works if a CDN is blocked at the venue
 app.get('/vendor/lucide.js', (req, res) => res.sendFile(path.join(here, 'node_modules/lucide/dist/umd/lucide.min.js')));
 
+// On Vercel several copies ("instances") of this server run at once. The demo data lives in Vercel's shared Runtime
+// Cache (src/shared.js): before an API call every instance adopts any newer data, and after a change it publishes it.
+app.use('/api', async (req, res, next) => {
+  if (!req.path.startsWith('/tts') && !req.path.startsWith('/stt') && !req.path.startsWith('/whatsapp')) await E.syncShared();
+  next();
+});
+
 const SARVAM_KEY = process.env.SARVAM_API_KEY || '';
+const CARTESIA_KEY = process.env.CARTESIA_API_KEY || '';
+const CARTESIA_EN_VOICE = process.env.CARTESIA_EN_VOICE_ID || 'db6b0ed5-d5d3-463d-ae85-518a07d3c2b4';
+const CARTESIA_TA_VOICE = process.env.CARTESIA_TA_VOICE_ID || 'fb7d8d97-9730-4165-bd79-36b5ce61b5f2';
+const CARTESIA_HI_VOICE = process.env.CARTESIA_HI_VOICE_ID || '4459a9a5-69d6-4680-b970-e13dc51845b6';
 const RESET_PIN = process.env.RESET_PIN || '';
 
 A.startAgent();
 // customers on WhatsApp: loyalty after every payment, Udhar questions, alerts to Murugan if he switched them on
 E.bus.on('payment_success', (txn) => { try { CRM.onPaymentSuccess(txn); } catch (e) { console.error(e); } });
 // Murugan can ask Voxa from his own phone chat; the answer goes back to that chat
-CRM.setOwnerChat(async (text) => (await A.chat(text, undefined)).reply);
+CRM.setOwnerChat(async (text) => (await A.chat(text, undefined, { switchApp: false })).reply);
 E.bus.on('payment_pending', (txn) => CRM.toMerchant('stuckAlerts', `Voxa: ${rupee(txn.amount)} from ${txn.fromName} is stuck at the bank. It will reach you or go back to them by ${txn.deadline}. I'm watching it.`));
 
 // ---------- live updates (Server-Sent Events) ----------
@@ -46,20 +58,28 @@ app.get('/api/stream', (req, res) => {
   req.on('close', () => clients.delete(res));
 });
 
-app.get('/api/state', (req, res) => res.json({ ...E.getState(), planner: E.plannerInsights() }));
+// Phones poll instead of holding an SSE connection open: ?rev= answers "unchanged" with a few bytes
+app.get('/api/state', (req, res) => {
+  const s = E.getState();
+  if (req.query.rev !== undefined && Number(req.query.rev) === s.rev) return res.json({ unchanged: true, rev: s.rev });
+  res.json({ ...s, planner: E.plannerInsights() });
+});
 // Sarvam usage meter, to keep an eye on the hackathon credits.
 // Rates used for the estimate (Sarvam pricing page): speech-to-text ₹0.49 a minute; Bulbul v3 ₹3 per 1,000 characters.
-const usage = { ttsChars: 0, ttsCalls: 0, ttsCached: 0, sttSeconds: 0, sttCalls: 0 };
+const usage = { ttsChars: 0, ttsCalls: 0, cartesiaTtsChars: 0, cartesiaTtsCalls: 0, ttsCached: 0, sttSeconds: 0, sttCalls: 0 };
 const credits = () => Math.round(((usage.ttsChars / 1000) * 3 + (usage.sttSeconds / 60) * 0.49) * 100) / 100;
-app.get('/api/config', (req, res) => res.json({ ...A.aiStatus(), whatsapp: { live: CRM.WA_LIVE, provider: CRM.PROVIDER, bot: CRM.botUsername(), ownerCode: CRM.ownerCode(), from: CRM.twilioFrom(), joinText: CRM.joinText(), shopCode: CRM.SHOP_CODE }, sarvam: !!SARVAM_KEY, resetPin: !!RESET_PIN, sarvamUsage: { ...usage, estCredits: credits() } }));
+const INSTANCE = `${process.pid}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`; // which running copy answered (diagnostics)
+app.get('/api/config', async (req, res) => { await TG.ready; res.json({ ...A.aiStatus(), serverless: E.sharedEnabled, instance: INSTANCE, whatsapp: { live: CRM.WA_LIVE, provider: CRM.PROVIDER, bot: CRM.botUsername(), ownerCode: CRM.ownerCode(), from: CRM.twilioFrom(), joinText: CRM.joinText(), shopCode: CRM.SHOP_CODE }, sarvam: !!SARVAM_KEY, stt: !!(SARVAM_KEY || GROQ_KEY || CARTESIA_KEY), cartesiaEnglish: !!CARTESIA_KEY, cartesiaTamil: !!CARTESIA_KEY, cartesiaHindi: !!CARTESIA_KEY, resetPin: !!RESET_PIN, sarvamUsage: { ...usage, estCredits: credits() } }); });
 app.get('/api/skills', (req, res) => res.json(SKILLS));
 
 // small helper so every route returns {ok} or {error}
 const route = (fn) => async (req, res) => {
   try {
     const out = await fn(req.body || {}, req);
+    await E.flushShared(); // on Vercel: publish the change before answering, so the next request on any copy sees it
     res.json({ ok: true, ...(out && typeof out === 'object' ? out : {}) });
   } catch (e) {
+    await E.flushShared();
     res.status(400).json({ ok: false, error: e.message });
   }
 };
@@ -93,16 +113,24 @@ app.post('/api/merchant/expenses/add', route((b) => {
 app.post('/api/merchant/chat', route(async (b) => {
   const text = String(b.text || '').slice(0, 500).trim();
   if (!text) throw new Error('Say or type something first.');
-  return A.chat(text, b.lang);
+  return A.chat(text, b.heard);
 }));
 app.post('/api/merchant/bill', route(async (b) => {
   const image = typeof b.image === 'string' ? b.image.replace(/^data:[^,]+,/, '') : null;
   const mediaType = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(b.mediaType) ? b.mediaType : 'image/jpeg';
   if (!image && !b.sample) throw new Error('Add a photo first.');
   if (image && image.length > 6_000_000) throw new Error('That photo is too big. Try again.');
-  if (image && !b.sample && !(b.check && b.check.ok)) throw new Error('That does not look like a bill. Send a photo of a printed bill only.');
-  return A.readBill({ image, mediaType, sample: b.sample || null, lang: b.lang, thumb: typeof b.thumb === 'string' && b.thumb.length < 40000 ? b.thumb : null });
+  if (image && !b.sample && !(b.check && (b.check.ok || b.check.reason !== 'looks like a person'))) throw new Error('That looks like a photo of a person. Send a bill or a payment screenshot only.');
+  return A.readBill({ image, mediaType, sample: b.sample || null, lang: b.lang, thumb: typeof b.thumb === 'string' && b.thumb.length < 40000 ? b.thumb : null, text: typeof b.text === 'string' ? b.text.trim().slice(0, 300) : '' });
 }));
+// ---------- Telegram webhook (used on Vercel; `npm run telegram` points the bot here) ----------
+app.post('/api/telegram/webhook', async (req, res) => {
+  if (!TG.TG_ON || req.get('x-telegram-bot-api-secret-token') !== TG.SECRET) return res.sendStatus(403);
+  // handle the message fully before answering: on Vercel the function may stop once the reply is sent
+  try { await TG.handleUpdate(req.body); } catch (e) { console.error('[telegram] webhook', e.message); }
+  await E.flushShared();
+  res.sendStatus(200); // always 200, or Telegram keeps re-sending the same message
+});
 // ---------- WhatsApp (Twilio) ----------
 // Twilio calls this for every WhatsApp message sent to the number. Point the sandbox's "When a message comes in" here.
 app.post('/api/whatsapp/incoming', express.urlencoded({ extended: false }), async (req, res) => {
@@ -123,7 +151,7 @@ app.post('/api/crm/settings', route((b) => {
   const s = E.getState().crm.settings;
   if ('enabled' in b) s.enabled = !!b.enabled;
   if ('merchantPhone' in b) s.merchantPhone = CRM.normPhone(b.merchantPhone);
-  for (const k of ['dailySummary', 'udharAlerts', 'stuckAlerts']) if (k in b) s[k] = !!b[k];
+  for (const k of ['dailySummary', 'udharAlerts', 'stuckAlerts', 'loyaltyAlerts']) if (k in b) s[k] = !!b[k];
   if (/^\d\d:\d\d$/.test(b.summaryTime || '')) s.summaryTime = b.summaryTime;
   if (typeof b.reward === 'string' && b.reward.trim()) E.getState().crm.reward = b.reward.trim().slice(0, 80);
   if ('perPayment' in b) E.getState().crm.perPayment = !!b.perPayment;
@@ -249,16 +277,43 @@ app.post('/api/reset', route((b) => {
   E.resetState();
 }));
 
-// ---------- Text to speech (Sarvam Bulbul), optional ----------
+// ---------- Text to speech (Cartesia Skylar, Janani and Siya; Sarvam otherwise) ----------
 // The same sentence is never paid for twice: rehearsals replay from this cache.
 const ttsCache = new Map();
 app.post('/api/tts', async (req, res) => {
-  if (!SARVAM_KEY) return res.status(404).json({ error: 'Sarvam not configured' });
   const text = String(req.body?.text || '').slice(0, 1400);
   const lang = SPEECH_CODES[req.body?.lang] || 'en-IN';
-  const key = lang + '|' + text;
+  const cartesiaVoice = lang === 'en-IN' ? CARTESIA_EN_VOICE : lang === 'ta-IN' ? CARTESIA_TA_VOICE : lang === 'hi-IN' ? CARTESIA_HI_VOICE : null;
+  const provider = cartesiaVoice && CARTESIA_KEY ? 'cartesia' : SARVAM_KEY ? 'sarvam' : null;
+  if (!provider) return res.status(404).json({ error: 'Text-to-speech not configured' });
+  const key = provider + '|' + lang + '|' + text;
   if (ttsCache.has(key)) { usage.ttsCached++; return res.set('Content-Type', 'audio/wav').send(ttsCache.get(key)); }
   try {
+    if (provider === 'cartesia') {
+      const r = await fetch('https://api.cartesia.ai/tts/bytes', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${CARTESIA_KEY}`, 'Cartesia-Version': '2026-08-14', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model_id: process.env.CARTESIA_MODEL || 'sonic-3.6',
+          transcript: text,
+          voice: cartesiaVoice,
+          language: lang,
+          output_format: { container: 'wav', encoding: 'pcm_s16le', sample_rate: 44100 },
+        }),
+        signal: AbortSignal.timeout(30000),
+      });
+      if (!r.ok) {
+        const detail = (await r.text()).slice(0, 400);
+        console.error('Cartesia TTS', r.status, detail);
+        return res.status(502).json({ error: 'Cartesia error ' + r.status, detail });
+      }
+      const buf = Buffer.from(await r.arrayBuffer());
+      usage.cartesiaTtsChars += text.length;
+      usage.cartesiaTtsCalls++;
+      if (ttsCache.size > 300) ttsCache.delete(ttsCache.keys().next().value);
+      ttsCache.set(key, buf);
+      return res.set('Content-Type', 'audio/wav').send(buf);
+    }
     const r = await fetch('https://api.sarvam.ai/text-to-speech', {
       method: 'POST',
       headers: { 'api-subscription-key': SARVAM_KEY, 'Content-Type': 'application/json' },
@@ -279,15 +334,87 @@ app.post('/api/tts', async (req, res) => {
   }
 });
 
-// ---------- Speech to text (Sarvam), optional ----------
-// The browser records a short clip (max ~15 s) and sends it here; we forward it to Sarvam.
-// Saaras v3 in transcribe mode first; if that is refused, Saarika v2.5.
+// ---------- Speech to text (Sarvam, Groq or Cartesia, in that order of preference) ----------
+// The browser records a short clip (max ~15 s) and sends it here.
+// Sarvam (Saaras v3 in transcribe mode, then Saarika v2.5) auto-detects the language.
+// Groq (Whisper) auto-detects it too. If Whisper names a language the app does not speak, we ask again in the app's current language.
+// Cartesia (ink-whisper) needs the language up front: with a wrong one it translates or garbles, so we use the app's current language.
+const GROQ_KEY = process.env.GROQ_API_KEY || '';
+const SPEECH_LANGS = { en: 'en-IN', ta: 'ta-IN', hi: 'hi-IN' };
+const sttExt = (type) => (type.includes('wav') ? 'wav' : type.includes('mp4') ? 'mp4' : type.includes('ogg') ? 'ogg' : 'webm');
+async function groqTranscribe(audio, type, hint) {
+  const ask = async (language) => {
+    let last;
+    // a brief 5xx is retried once
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const fd = new FormData();
+      fd.append('file', new Blob([audio], { type }), 'speech.' + sttExt(type));
+      fd.append('model', process.env.GROQ_STT_MODEL || 'whisper-large-v3');
+      fd.append('response_format', 'verbose_json');
+      fd.append('temperature', '0');
+      if (language) fd.append('language', language);
+      const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST', headers: { Authorization: `Bearer ${GROQ_KEY}` }, body: fd, signal: AbortSignal.timeout(20000),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.ok) return data;
+      last = new Error(`Groq ${r.status}: ${data.error?.message || r.statusText}`);
+      if (r.status < 500) break;
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+    throw last;
+  };
+  let data = await ask();
+  const code = { english: 'en', tamil: 'ta', hindi: 'hi' }[String(data.language || '').toLowerCase()];
+  if (!code) data = await ask(SPEECH_LANGS[hint] ? hint : 'en');
+  const language = code || (SPEECH_LANGS[hint] ? hint : 'en');
+  return { transcript: String(data.text || '').trim(), language: SPEECH_LANGS[language] };
+}
+async function cartesiaTranscribe(audio, type, lang) {
+  const code = SPEECH_LANGS[lang] ? lang : 'en';
+  let last;
+  // Cartesia sometimes answers 5xx for a moment: one quick retry
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const fd = new FormData();
+    fd.append('file', new Blob([audio], { type }), 'speech.' + sttExt(type));
+    fd.append('model', process.env.CARTESIA_STT_MODEL || 'ink-whisper');
+    fd.append('language', code);
+    const r = await fetch('https://api.cartesia.ai/stt', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${CARTESIA_KEY}`, 'Cartesia-Version': '2026-08-14' },
+      body: fd,
+      signal: AbortSignal.timeout(20000),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (r.ok) return { transcript: String(data.text || '').trim(), language: SPEECH_LANGS[code] };
+    last = new Error(`Cartesia ${r.status}: ${data.message || data.error || r.statusText}`);
+    if (r.status < 500) break;
+    await new Promise((resolve) => setTimeout(resolve, 600));
+  }
+  throw last;
+}
 app.post('/api/stt', express.raw({ type: () => true, limit: '6mb' }), async (req, res) => {
-  if (!SARVAM_KEY) return res.status(404).json({ error: 'Sarvam not configured' });
+  if (!SARVAM_KEY && !GROQ_KEY && !CARTESIA_KEY) return res.status(404).json({ error: 'Speech recognition not configured' });
+  const type = (req.get('content-type') || 'audio/wav').split(';')[0].trim();
+  if (!SARVAM_KEY) {
+    const hint = String(req.query.lang || 'en');
+    const engines = [GROQ_KEY && ['Groq', groqTranscribe], CARTESIA_KEY && ['Cartesia', cartesiaTranscribe]].filter(Boolean);
+    const errors = [];
+    for (const [name, transcribe] of engines) {
+      try {
+        const out = await transcribe(req.body, type, hint);
+        usage.sttSeconds += Math.min(60, Math.max(1, Number(req.query.secs) || 5)); usage.sttCalls++;
+        return res.json(out);
+      } catch (e) {
+        console.error(name + ' STT', e.message);
+        errors.push(e.message);
+      }
+    }
+    return res.status(502).json({ error: 'Speech recognition failed', detail: errors.join(' | ').slice(0, 400) });
+  }
   // auto-detect: Murugan may speak Tamil even with the screen in English, and Tamil should come back in Tamil script
   const lang = process.env.SARVAM_STT_LANG || 'unknown';
   const secs = Math.min(60, Math.max(1, Number(req.query.secs) || 5));
-  const type = (req.get('content-type') || 'audio/wav').split(';')[0].trim();
   const ext = type.includes('wav') ? 'wav' : type.includes('mp4') ? 'mp4' : type.includes('ogg') ? 'ogg' : 'webm';
   const attempt = async (fields) => {
     const fd = new FormData();
@@ -308,7 +435,11 @@ app.post('/api/stt', express.raw({ type: () => true, limit: '6mb' }), async (req
 });
 
 const PORT = Number(process.env.PORT || 3000);
-app.listen(PORT, () => {
-  const ai = A.aiStatus();
-  console.log(`Voxa sandbox on http://localhost:${PORT}  ·  AI: ${ai.ai ? ai.brainName + ' ' + ai.model : 'rules only (no API key)'}  ·  Voice: ${SARVAM_KEY ? 'Sarvam' : 'browser'}`);
-});
+// On Vercel the platform calls the exported app itself; locally (and on Render etc.) we listen on a port
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    const ai = A.aiStatus();
+    console.log(`Voxa sandbox on http://localhost:${PORT}  ·  AI: ${ai.ai ? ai.brainName + ' ' + ai.model : 'rules only (no API key)'}  ·  Voice: ${CARTESIA_KEY ? 'Cartesia English/Tamil/Hindi' : SARVAM_KEY ? 'Sarvam' : 'browser'}`);
+  });
+}
+export default app;

@@ -108,18 +108,20 @@ function clean(s) {
 // Read one bill photo. Returns { is_bill, reason, items:[{category, amount}], due_date, title, reply }.
 export async function readBillImage({ imageB64, mediaType, langName, categories }) {
   chatUsage.images++;
-  const prompt = `You help a small shop owner in India keep his accounts. Look at this image.
-First decide: is it a bill, receipt, invoice or payment slip printed or written on paper (or a screenshot of one)? If it shows a person, a face, an animal, a scene, or anything that is not a bill, set is_bill to false and do not read anything else.
-If it is a bill, do NOT list or add up the items. Read only the final amount paid or to pay (grand total / net amount / amount payable). Choose ONE category for the whole bill from: ${categories.join(', ')}. Use "stock" for a supermarket, grocery or wholesale purchase bill, "electricity" for an EB/power bill, "rent" for rent receipts, "other" if unsure.
+  const prompt = `You help a small shop owner in India keep his accounts. Look at this image. It is one of three things: a bill, a payment screenshot, or something else.
+- "bill": a bill, receipt, invoice or payment slip printed or written on paper (or a screenshot of one). Do NOT list or add up the items. Read only the final amount paid or to pay (grand total / net amount / amount payable). Choose ONE category for the whole bill from: ${categories.join(', ')}. Use "stock" for a supermarket, grocery or wholesale purchase bill, "electricity" for an EB/power bill, "rent" for rent receipts, "other" if unsure.
+- "payment_screenshot": a phone screenshot or photo of a UPI / Paytm / PhonePe / Google Pay payment success, failure or pending screen that a customer shows as proof of paying the shop. Read the amount, the UPI reference / UTR / transaction number (digits only, or null), the name of the person who paid or the person paid, the status words shown (success, failed or pending), and the time and date shown. Also say in tamper_hints if anything looks edited or fake: mismatched fonts, misaligned text, odd spacing, a wrong or missing logo or layout, a missing UTR, a status bar clock that disagrees with the shown time, blurred or pasted areas. Never judge whether a date is in the future or the past; you do not know today's date. Use "none" if nothing looks wrong.
+- "other": anything else, such as a person, a face, an animal or a scene. Read nothing else.
 Reply with JSON only, no other text:
-{"is_bill": true|false, "reason": "short reason in English", "title": "what the bill is, in English, 2 to 4 words, e.g. Grocery bill, EB bill", "shop": "shop or company name on the bill, or null", "total": 1234, "category": "stock", "due_date": "DD Mon YYYY or null", "reply": "one short spoken sentence in ${langName}: what bill and its total"}`;
+{"image_type": "bill"|"payment_screenshot"|"other", "is_bill": true|false, "reason": "short reason in English", "title": "what the bill is, in English, 2 to 4 words, e.g. Grocery bill, EB bill", "shop": "shop or company name on the bill, or null", "total": 1234, "category": "stock", "due_date": "DD Mon YYYY or null", "reply": "one short spoken sentence in ${langName}: what bill and its total", "amount": 1234, "utr": "digits or null", "party": "name shown or null", "shown_status": "success"|"failed"|"pending"|"unknown", "shown_time": "time and date shown or null", "tamper_hints": "none or short English description"}
+Set is_bill to true only when image_type is "bill". For a payment_screenshot leave title, shop, total, category, due_date and reply null.`;
   const res = await complete({
     model: VISION_MODEL,
     messages: [{ role: 'user', content: [
-      { type: 'image_url', image_url: { url: `data:${mediaType};base64,${imageB64}`, detail: 'low' } },
+      { type: 'image_url', image_url: { url: `data:${mediaType};base64,${imageB64}`, detail: 'high' } },
       { type: 'text', text: prompt },
     ] }],
-    reasoning_effort: 'none', temperature: 0, max_tokens: 300,
+    reasoning_effort: 'none', temperature: 0, max_tokens: 500,
   });
   // keep underscores here: the JSON keys need them
   const text = String(((res.choices || [])[0] || {}).message?.content || '').replace(/<think>[\s\S]*?<\/think>/g, '');
