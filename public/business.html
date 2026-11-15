@@ -121,16 +121,6 @@
   .plan-item p { font-size: 14px; color: var(--ink-2); margin-top: 4px; line-height: 1.45; }
   .plan-item span { display: block; font-size: 12px; color: var(--ink-3); margin-top: 6px; }
   /* Ask Voxa: a soft light-blue glow sweeps round the button every 10 seconds */
-  .fab { overflow: visible; isolation: isolate; }
-  .fab::before { content: ''; position: absolute; inset: -4px; border-radius: 999px; z-index: -1; padding: 3px;
-    background: conic-gradient(from var(--glow-a, 0deg), transparent 0deg, rgba(120, 220, 255, 0) 200deg, rgba(120, 220, 255, 0.95) 300deg, #ffffff 330deg, rgba(120, 220, 255, 0.95) 345deg, transparent 360deg);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
-    opacity: 0; animation: fab-sweep 10s linear infinite; }
-  .fab::after { content: ''; position: absolute; inset: -6px; border-radius: 999px; z-index: -2; box-shadow: 0 0 0 0 rgba(79, 209, 232, 0); animation: fab-halo 10s ease-out infinite; }
-  @property --glow-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-  @keyframes fab-sweep { 0%, 78% { opacity: 0; --glow-a: 0deg; } 80% { opacity: 1; } 96% { opacity: 1; --glow-a: 360deg; } 100% { opacity: 0; --glow-a: 360deg; } }
-  @keyframes fab-halo { 0%, 80% { box-shadow: 0 0 0 0 rgba(79, 209, 232, 0); } 88% { box-shadow: 0 0 22px 6px rgba(79, 209, 232, 0.55); } 100% { box-shadow: 0 0 0 0 rgba(79, 209, 232, 0); } }
-  @media (prefers-reduced-motion: reduce) { .fab::before, .fab::after { animation: none; } }
 
   /* Ask Voxa docked over whatever page is open */
   .voxa-close { display: none; }
@@ -202,14 +192,6 @@
   .draft-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border: 0; border-radius: 50%; background: #eef2ff; color: #2f45d9; display: grid; place-items: center; cursor: pointer; }
   .draft-clear svg { width: 16px; height: 16px; }
   .input.from-voice { border-color: #2f45d9; box-shadow: 0 0 0 3px rgba(47, 69, 217, 0.15); background: #f7f9ff; }
-  @media (min-width: 900px) {
-    body:not(.voxa-docked) .voxa-panel { display: grid; grid-template-columns: 280px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; }
-    body:not(.voxa-docked) .voxa-head { grid-column: 1 / -1; }
-    body:not(.voxa-docked) #chatList { display: flex !important; grid-column: 1; grid-row: 2 / 5; border-right: 1px solid var(--line); background: #f7f9fc; }
-    body:not(.voxa-docked) #chat, body:not(.voxa-docked) #quickQs, body:not(.voxa-docked) .voxa-composer { grid-column: 2; }
-    body:not(.voxa-docked) #chat { display: flex !important; }
-    body:not(.voxa-docked) #chatsBtn { display: none; }
-  }
   .chat-list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 2px 6px; }
   .chat-list { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
   .chat-row { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-md); cursor: pointer; background: #fff; }
@@ -237,16 +219,6 @@
   .add-cost { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 10px; }
   .add-cost .input { min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); font: inherit; color: var(--ink); }
   @media (max-width: 640px) { .src-grid, .add-cost { grid-template-columns: 1fr; } }
-  body.voxa-docked [data-pane="voxa"] { display: block !important; position: fixed; right: 20px; top: 72px; bottom: 20px; width: min(600px, calc(100vw - 40px)); z-index: 60; animation: dock-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
-  body.voxa-docked [data-pane="voxa"] .voxa-panel { height: 100%; min-height: 0; background: #fff; border: 2px solid #2f45d9; box-shadow: 0 30px 80px -20px rgba(20, 30, 90, 0.6); }
-  body.voxa-docked [data-pane="voxa"] .voxa-panel > .panel-head, body.voxa-docked [data-pane="voxa"] .voxa-head { background: linear-gradient(90deg, #2f45d9, #4f63ff); color: #fff; }
-  body.voxa-docked [data-pane="voxa"] .voxa-head * { color: #fff !important; }
-  /* the dimmed page is a huge shadow around the panel, so it can never cover the panel itself */
-  body.voxa-docked [data-pane="voxa"] { box-shadow: 0 0 0 200vmax rgba(11, 27, 51, 0.45); border-radius: var(--r-lg); }
-  @keyframes dock-in { from { transform: translateY(12px); opacity: 0; } }
-  body.voxa-docked .voxa-close { display: grid; }
-  body.voxa-docked .voxa-chat .msg { max-width: 92%; font-size: 15px; }
-  @media (max-width: 640px) { body.voxa-docked [data-pane="voxa"] { right: 0; left: 0; top: 60px; bottom: 0; width: 100%; } }
 
   .kpi.flat { box-shadow: none; background: var(--surface-2); padding: 14px 16px; }
   .chk-pills { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -303,17 +275,12 @@
     .pick { min-height: 44px; }
     .style-switch button { min-height: 38px; padding: 6px 14px; }
     /* on a phone the chat is the whole screen: no page title or report button above it */
-    body.pane-voxa .page-head { display: none; }
-    body.pane-voxa .voxa-panel { height: calc(100dvh - 60px - 2 * env(safe-area-inset-top) - 24px); }
   }
   @media (max-width: 360px) {
     .upload-btn span { display: none; }
     .upload-btn { width: 48px; padding: 0; }
   }
   @media (max-width: 640px) {
-    body.voxa-docked [data-pane="voxa"] { top: calc(60px + env(safe-area-inset-top)); }
-    .fab { right: 14px; bottom: calc(16px + env(safe-area-inset-bottom)); min-height: 52px; }
-    .fab span, .fab { white-space: nowrap; }
     .loan-inputs { gap: 14px; }
     .words .word { font-size: 15px; }
     .vcard { padding: 12px; }
@@ -322,9 +289,10 @@
     .table-wrap, .pay-scroll { -webkit-overflow-scrolling: touch; }
   }
 </style>
+<link rel="stylesheet" href="/css/voxa.css?v=ai1">
 </head>
 <body data-role="merchant">
-<header class="shell" data-lang-toggle="1" data-title="Murugan and Co" data-sub="Voxa Pay for Business" data-user="Murugan" data-user-role="Shop owner · Deepak"></header>
+<header class="shell" data-compact-side="1" data-lang-toggle="1" data-title="Murugan and Co" data-sub="Voxa Pay for Business" data-user="Murugan" data-user-role="Shop owner · Deepak"></header>
 
 <main class="page">
   <div class="page-head">
@@ -335,8 +303,33 @@
     </div>
   </div>
 
+  <nav class="subtabs hidden" id="subtabs" aria-label="Sections"></nav>
+  <div class="pane-focus hidden" id="paneFocus"></div>
+
+  <!-- HOME: the ask bar and today's briefing -->
+  <section data-pane="home" class="home" id="homePane">
+    <div class="home-hero">
+      <div class="home-greet" id="homeGreet" data-noi18n></div>
+      <form class="askbar" id="askBar" autocomplete="off">
+        <button class="askbar-mic" id="homeMic" type="button" aria-label="Speak to Voxa"><i data-lucide="mic"></i></button>
+        <input class="askbar-input" id="homeInput" data-noi18n placeholder="Ask Voxa anything about your shop?" aria-label="Ask Voxa">
+        <label class="askbar-ico" title="Photo of a bill or payment"><i data-lucide="camera"></i><input type="file" accept="image/*" capture="environment" hidden data-billpick></label>
+        <button class="askbar-go" type="submit" aria-label="Ask"><i data-lucide="arrow-up"></i></button>
+      </form>
+      <div class="chips home-chips" id="homeChips" data-noi18n></div>
+    </div>
+    <div class="home-kpis" id="homeKpis" data-noi18n></div>
+    <div class="home-brief">
+      <div class="home-brief-head"><h2 id="briefTitle">Today's briefing</h2><span class="tiny muted" id="briefWhen" data-noi18n></span></div>
+      <div class="brief-grid" id="briefing" data-noi18n></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section data-pane="settings" class="stack hidden" style="gap:20px" id="settingsPane"></section>
+
   <!-- DASHBOARD -->
-  <section data-pane="dashboard" class="stack" style="gap:20px">
+  <section data-pane="dashboard" class="stack hidden" style="gap:20px">
     <div class="kpis with-hero" id="kpis"></div>
     <div id="attention" class="stack" style="gap:12px"></div>
 
@@ -464,29 +457,6 @@
     </div>
   </section>
 
-  <!-- ASK VOXA -->
-  <section data-pane="voxa" class="hidden">
-    <div class="panel voxa-panel">
-      <div class="voxa-head">
-        <div class="dot-ico ai" style="width:42px;height:42px"><i data-lucide="bot"></i></div>
-        <div class="grow"><div class="strong" style="font-size:17px">Voxa</div><div class="tiny muted" id="aiMode"></div></div>
-        <button class="btn sm quiet" id="chatsBtn" title="Past chats"><i data-lucide="history"></i><span>Chats</span></button>
-        <button class="btn sm quiet" id="newChat" title="Start a new chat; this one is kept"><i data-lucide="square-pen"></i><span>New</span></button>
-        <button class="btn icon quiet voxa-close" id="voxaClose" aria-label="Close"><i data-lucide="x"></i></button>
-      </div>
-      <div class="chat-list hidden" id="chatList"></div>
-      <div class="chat voxa-chat" id="chat" aria-live="polite" data-noi18n></div>
-      <div class="chips" id="quickQs" style="padding:10px 18px 0"></div>
-      <div class="staged hidden" id="staged"><img id="stagedImg" alt=""><span id="stagedText" data-noi18n></span><button class="btn icon quiet" id="stagedX" type="button" aria-label="Remove photo"><i data-lucide="x"></i></button></div>
-      <div class="composer voxa-composer">
-        <button class="mic big" id="mic" aria-label="Speak to Voxa" aria-pressed="false" type="button"><i data-lucide="mic"></i></button><span class="sr-only" id="micStatus" role="status" aria-live="polite"></span>
-        <label class="btn icon cam" title="Take a photo of a bill" aria-label="Take a photo of a bill"><i data-lucide="camera"></i><input type="file" id="billFile" accept="image/*" capture="environment" hidden></label>
-        <label class="btn upload-btn" title="Upload a bill photo from your phone or computer"><i data-lucide="paperclip"></i><span>Upload</span><input type="file" accept="image/*" hidden data-billpick></label>
-        <div class="draft-wrap"><input class="input" id="chatInput" placeholder="Speak or type in Tamil, Hindi or English…"><span class="mic-pill hidden" id="micPill" data-noi18n aria-hidden="true"></span><button class="draft-clear hidden" id="clearDraft" type="button" aria-label="Clear the text" title="Clear"><i data-lucide="x"></i></button></div>
-        <button class="btn primary icon" id="send" aria-label="Send"><i data-lucide="arrow-up"></i></button>
-      </div>
-    </div>
-  </section>
 
   <!-- COSTS & PROFIT (managed by Voxa) -->
   <section data-pane="costs" class="stack hidden" style="gap:20px" id="costsPane"></section>
@@ -501,47 +471,63 @@
   <section data-pane="customers" class="stack hidden" style="gap:20px" id="customersPane"></section>
 </main>
 
-<button class="fab" id="fab"><i data-lucide="mic"></i>Ask Voxa</button>
+<!-- VOXA COPILOT: docked beside the screen on a computer, a bottom sheet on a phone -->
+<aside id="copilot" class="copilot" aria-label="Voxa">
+  <div class="cp-resize" id="cpResize" title="Drag to resize" aria-hidden="true"></div>
+    <div class="panel voxa-panel">
+      <div class="voxa-head">
+        <button class="cp-grab" id="cpGrab" type="button" aria-label="Open the conversation"><span></span></button>
+        <div class="dot-ico ai cp-logo"><i data-lucide="sparkles"></i></div>
+        <div class="grow"><div class="strong cp-name">Voxa <span class="ai-dot" id="aiDot" title=""></span></div><div class="tiny muted dev-only" id="aiMode"></div></div>
+        <button class="btn sm quiet" id="chatsBtn" title="Past chats"><i data-lucide="history"></i><span>Chats</span></button>
+        <button class="btn sm quiet" id="newChat" title="Start a new chat; this one is kept"><i data-lucide="square-pen"></i><span>New</span></button>
+        <button class="btn icon quiet" id="cpFull" aria-label="Full screen" title="Full screen"><i data-lucide="maximize-2"></i></button>
+        <button class="btn icon quiet voxa-close" id="voxaClose" aria-label="Close" title="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="chat-list hidden" id="chatList"></div>
+      <div class="chat voxa-chat" id="chat" aria-live="polite" data-noi18n></div>
+      <div class="chips" id="quickQs" style="padding:10px 18px 0"></div>
+      <div class="staged hidden" id="staged"><img id="stagedImg" alt=""><span id="stagedText" data-noi18n></span><button class="btn icon quiet" id="stagedX" type="button" aria-label="Remove photo"><i data-lucide="x"></i></button></div>
+      <div class="composer voxa-composer">
+        <button class="btn icon quiet cp-expand" id="cpExpand" type="button" aria-label="Open the conversation"><i data-lucide="chevron-up"></i></button>
+        <button class="mic big" id="mic" aria-label="Speak to Voxa" aria-pressed="false" type="button"><i data-lucide="mic"></i></button><span class="sr-only" id="micStatus" role="status" aria-live="polite"></span>
+        <label class="btn icon cam" title="Take a photo of a bill" aria-label="Take a photo of a bill"><i data-lucide="camera"></i><input type="file" id="billFile" accept="image/*" capture="environment" hidden></label>
+        <label class="btn upload-btn" title="Upload a bill photo from your phone or computer"><i data-lucide="paperclip"></i><span>Upload</span><input type="file" accept="image/*" hidden data-billpick></label>
+        <div class="draft-wrap"><input class="input" id="chatInput" placeholder="Speak or type in Tamil, Hindi or English…"><span class="mic-pill hidden" id="micPill" data-noi18n aria-hidden="true"></span><button class="draft-clear hidden" id="clearDraft" type="button" aria-label="Clear the text" title="Clear"><i data-lucide="x"></i></button></div>
+        <button class="btn primary icon" id="send" aria-label="Send"><i data-lucide="arrow-up"></i></button>
+        <button class="btn icon quiet handsfree" id="handsFree" type="button" aria-pressed="false" title="Hands-free: talk, Voxa answers, then listens again"><i data-lucide="audio-lines"></i></button>
+      </div>
+    </div>
+</aside>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="/vendor/lucide.js"></script>
 <script src="/js/common.js?v=mobile-1"></script>
 <script src="/js/tamil.js"></script>
+<script src="/js/cards.js?v=ai1"></script>
 <script>
 const { inr, esc, $, $$, i, icons, api, subscribe, badge, route, ago, time, toast, speak, listen } = V;
-let S = null, pane = 'dashboard', soundOn = true, seen = null, busy = false, period = '7', earnP = 'today';
+let S = null, pane = 'home', soundOn = true, seen = null, busy = false, period = '7', earnP = 'today';
 let loanIn = { amount: 150000, months: 12, extra: 0, rate: null }, lp = null, prof = null, loanView = 'mine';
 
-const PANES = { whatsapp: 'WhatsApp', customers: 'Customers & Udhaar', dashboard: 'Dashboard overview', payments: 'Payments', insights: 'Sales insights', loan: 'Loan', voxa: 'Ask Voxa', costs: 'Costs & profit', notes: 'Voxa notes' };
-V.sections = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
-  { id: 'payments', label: 'Payments', icon: 'arrow-left-right', count: 0 },
-  { id: 'insights', label: 'Sales insights', icon: 'lightbulb' },
-  { id: 'loan', label: 'Loan', icon: 'hand-coins' },
-  { id: 'costs', label: 'Costs & profit', icon: 'piggy-bank' },
-  { id: 'notes', label: 'Voxa notes', icon: 'notebook-pen', count: 0 },
-  { id: 'customers', label: 'Customers & Udhaar', icon: 'users', count: 0 },
-  { id: 'whatsapp', label: 'WhatsApp', icon: 'message-circle' },
-  { id: 'voxa', label: 'Ask Voxa', icon: 'mic' },
-];
-V.onSection = (id) => {
+const PANES = { home: 'Home', whatsapp: 'Messages', customers: 'Customers & Udhaar', dashboard: 'Sales', payments: 'Payments', insights: 'Sales insights', loan: 'Loan', costs: 'Costs & profit', notes: 'Voxa notes', settings: 'Settings' };
+// show one screen inside <main>; the router in shell.js decides which (and applies filters)
+function showPane(id) {
   pane = id;
-  document.body.classList.remove('voxa-docked');
-  $$('[data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== id));
-  $('#title').textContent = PANES[id];
-  $('#crumb').textContent = `Home / Murugan and Co / ${PANES[id]}`;
-  $('#period').classList.toggle('hidden', ['payments', 'loan', 'costs', 'notes', 'voxa', 'customers', 'whatsapp'].includes(id));
+  $$('main [data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== id));
+  $('#title').textContent = PANES[id] || '';
+  $('#crumb').textContent = `Murugan and Co / ${PANES[id] || ''}`;
+  $('#period').classList.toggle('hidden', id !== 'dashboard' && id !== 'insights');
+  $('#download').classList.toggle('hidden', id === 'home' || id === 'settings' || id === 'notes');
   if (id === 'loan') { setLoanView('mine'); loadProfile(); loadPlan(); }
   if (id === 'notes' && S) renderNotes();
   if (id === 'customers' && S) renderCustomers();
   if (id === 'whatsapp' && S) renderWhatsapp();
   if (id === 'costs' && S) renderCosts();
-  if (id === 'voxa') { renderChat(); setTimeout(() => $('#chatInput').focus({ preventScroll: true }), 50); }
-  document.body.classList.toggle('pane-voxa', id === 'voxa');
-  $('#fab').classList.toggle('hidden', id === 'voxa');
+  document.body.classList.toggle('pane-home', id === 'home');
   window.scrollTo({ top: 0 });
-};
-V.onBell = () => { V.markSection('payments'); V.onSection('payments'); };
+}
+V.onBell = () => V.go('payments');
 
 const QUICK = {
   en: ['How were sales this week?', 'What happened to my last payment?', 'Explain my loan simply', 'Show my profit'],
@@ -578,19 +564,8 @@ function quickFor(lang) {
 }
 
 // ---------- drawer ----------
-function openVoxa() {
-  if (pane === 'voxa') return;
-  document.body.classList.add('voxa-docked');
-  $('#fab').classList.add('hidden');
-  renderChat();
-  setTimeout(() => $('#chatInput').focus({ preventScroll: true }), 60);
-}
-function closeVoxa() { document.body.classList.remove('voxa-docked'); $('#fab').classList.toggle('hidden', pane === 'voxa'); }
-$('#fab').onclick = openVoxa;
-// tapping the dimmed page around the panel closes it
-document.addEventListener('mousedown', (e) => { if (document.body.classList.contains('voxa-docked') && !e.target.closest('[data-pane="voxa"], #fab, .toast, .lang-top')) closeVoxa(); });
-$('#voxaClose').onclick = closeVoxa;
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeVoxa(); });
+function openVoxa() { V.openCopilot(); }
+function closeVoxa() { V.closeCopilot(); }
 
 // ---------- header controls ----------
 // Voxa reads every answer aloud; each answer has Play, and Stop while it is talking.
@@ -616,7 +591,7 @@ $('#download').onclick = () => {
 // ---------- chat ----------
 // ---------- Voxa skills ----------
 let SKILLS = [];
-fetch('/api/skills').then((r) => r.json()).then((x) => { SKILLS = x; if (pane === 'voxa') renderChat(); });
+fetch('/api/skills').then((r) => r.json()).then((x) => { SKILLS = x; renderChat(); });
 function skillsGrid(compact) {
   if (!SKILLS.length || !S) return '';
   const lang = S.merchant.lang;
@@ -722,7 +697,7 @@ async function sendBill(st, text) {
     speak(r.reply, S.merchant.lang, 'bill');
   } catch (e) {} finally { busy = false; renderChat(); }
 }
-document.addEventListener('click', (e) => { const b = e.target.closest('[data-bill]'); if (b) { if (pane !== 'voxa') openVoxa(); stageBill(drawBill(b.dataset.bill), b.dataset.bill); } });
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-bill]'); if (b) { openVoxa(); stageBill(drawBill(b.dataset.bill), b.dataset.bill); } });
 document.addEventListener('change', (e) => {
   if (!e.target.matches('[data-billpick]')) return;
   const f = e.target.files && e.target.files[0];
@@ -746,9 +721,15 @@ const HEARD = { 'ta-IN': 'ta', 'hi-IN': 'hi', 'en-IN': 'en' };
 async function ask(text, opts = {}) {
   text = (text || '').trim();
   if (!text || busy) return;
+  V.openCopilot(true);
   busy = true; $('#chatInput').value = ''; $('#send').disabled = true; renderChat();
   const heard = HEARD[opts.heard];
-  try { const r = await api('/api/merchant/chat', { text, heard }); speak(r.reply, r.lang || S.merchant.lang, r.at ? 'm' + r.at : 'reply'); }
+  try {
+    const r = await api('/api/merchant/chat', { text, heard, context: V.context() });
+    // an answer that opens a screen: it appears beside the conversation
+    if (r.nav && r.nav.screen) V.go(r.nav.screen, r.nav.params || {});
+    speak(r.reply, r.lang || S.merchant.lang, r.at ? 'm' + r.at : 'reply');
+  }
   catch (e) {} finally { busy = false; $('#send').disabled = false; renderChat(); }
 }
 let voiceDraft = null; // set when the text in the box came from speech: then Voxa answers aloud, in that language
@@ -809,7 +790,10 @@ $('#mic').onclick = () => {
   if (rec) { rec.stop(); return; }
   setMicState('pending');
   let ended = false;
+  const hands = window.VS && VS.handsFree;
   const r = listen(S.merchant.lang, (t, heard) => {
+    // hands-free: what he said goes straight to Voxa, and the mic opens again after the answer
+    if (hands) { ask(t, { voice: true, heard }); return; }
     // what he said is typed into the box first; he can fix it, send it, or clear it
     const box = $('#chatInput');
     box.value = (box.value ? box.value + ' ' : '') + t;
@@ -818,7 +802,7 @@ $('#mic').onclick = () => {
     box.classList.add('from-voice');
     $('#clearDraft').classList.remove('hidden');
     toast({ en: 'Check the text, then press send.', ta: 'உரையைச் சரிபார்த்து, அனுப்பு அழுத்துங்கள்.', hi: 'टेक्स्ट जाँचें, फिर भेजें दबाएँ।' }[S.merchant.lang] || 'Check the text, then press send.');
-  }, () => { ended = true; rec = null; setMicState('idle'); }, (recording) => setMicState(recording ? 'recording' : 'processing'));
+  }, () => { ended = true; rec = null; setMicState('idle'); }, (recording) => setMicState(recording ? 'recording' : 'processing'), { autoStop: hands });
   // listen() can end before it returns (mic blocked, unsupported): only keep the handle while it is live
   if (!ended) rec = r;
 };
@@ -843,8 +827,8 @@ document.addEventListener('click', async (e) => {
     if (act === 'calcLimit') { loanIn.amount = Number(id); setLoanView('calc'); loadPlan(); }
     if (act === 'delNote') await api('/api/merchant/notes/remove', { id });
     if (act === 'explainLoan') { openVoxa(); await ask((QUICK[S.merchant.lang] || QUICK.en)[2]); }
-    if (act === 'ask') { if (pane !== 'voxa') openVoxa(); await ask(b.dataset.q); }
-    if (act === 'goto') { if (b.dataset.period) { period = b.dataset.period; render(); } V.markSection(id); V.onSection(id); }
+    if (act === 'ask') { openVoxa(); await ask(b.dataset.q); }
+    if (act === 'goto') { if (b.dataset.period) { period = b.dataset.period; render(); } V.go(SCREEN_OF[id] || id); }
   } catch (err) {} finally { b.disabled = false; }
 });
 
@@ -1733,14 +1717,9 @@ function renderCosts() {
   icons();
 }
 
-// Dashboards appear in the chat only when he taps the button, so a short answer stays short.
-const shownCards = new Set();
-const CARD_BTN = { sales: ['chart-column', 'Show sales dashboard'], costs: ['piggy-bank', 'Show costs & profit dashboard'], loan: ['hand-coins', 'Show loan dashboard'], payments: ['credit-card', 'Show payments dashboard'], planner: ['lightbulb', 'Show insights'], eligibility: ['badge-check', 'Show loan check'] };
-function cardOrButton(cd, key) {
-  if (!CARD_BTN[cd.type] || shownCards.has(key)) return chatCard(cd);
-  return `<div class="msg-actions"><button class="btn sm" data-showcard="${esc(key)}">${i(CARD_BTN[cd.type][0])}${CARD_BTN[cd.type][1]}</button></div>`;
-}
-document.addEventListener('click', (e) => { const b = e.target.closest('[data-showcard]'); if (!b) return; shownCards.add(b.dataset.showcard); renderChat(); const ch = $('#chat'); ch.scrollTop = ch.scrollHeight; });
+// where an answer came from: a small dot; the words only with Settings > Developer
+const SRC_NAME = { claude: 'Claude', gemini: 'Gemini', sarvam: 'Sarvam AI', voxa: 'app data', rules: 'offline mode' };
+const srcTag = (src) => `<i class="src-dot ${src === 'rules' ? 'off' : src === 'voxa' ? 'data' : 'ai'}" title="Voxa \u00b7 ${SRC_NAME[src] || src}"></i><span class="dev-only">Voxa \u00b7 ${SRC_NAME[src] || src}</span>`;
 
 // ---------- dashboard cards inside Voxa's replies ----------
 function chatCard(c) {
@@ -1894,9 +1873,9 @@ function renderChat() {
   const intro = { en: 'Ask me anything about your shop, in Tamil, Hindi or English. Tap the mic and speak.', ta: 'உங்கள் கடையைப் பற்றி எதையும் கேளுங்கள். மைக்கைத் தட்டி தமிழில் பேசுங்கள்.', hi: 'अपनी दुकान के बारे में कुछ भी पूछिए। माइक दबाइए और बोलिए।' }[lang];
   const sessions = S.chatSessions || [];
   $('#chatList').classList.toggle('hidden', !showChats);
-  $('#chat').classList.toggle('hidden', showChats && !(!document.body.classList.contains('voxa-docked') && window.innerWidth >= 900));
+  $('#chat').classList.toggle('hidden', showChats && !document.body.classList.contains('cp-full'));
   $('#chatsBtn').classList.toggle('on', showChats);
-  const fullPage = !document.body.classList.contains('voxa-docked') && window.innerWidth >= 900;
+  const fullPage = document.body.classList.contains('cp-full');
   {
     const row = (id, title, at, n, current) => `<div class="chat-row ${current ? 'on' : ''}" data-openchat="${id}"><div class="grow"><div class="strong">${esc(title)}</div><div class="tiny muted">${current ? 'Open now' : ago(at)} · ${n} messages</div></div><button class="btn icon quiet sm" data-delchat="${id}" aria-label="Delete chat">${i('trash-2')}</button></div>`;
     $('#chatList').innerHTML = `<div class="chat-list-head"><b>Chats</b><button class="btn sm" data-newchat>${i('square-pen')}New chat</button></div><div class="tiny muted" style="padding:0 2px 8px">Tap a chat to open it. Save an answer to Voxa notes with the bookmark under it.</div>`
@@ -1904,7 +1883,7 @@ function renderChat() {
       + (sessions.length ? sessions.map((x) => row(x.id, x.title, x.at, x.messages.length, false)).join('') : (S.chat.length ? '' : '<div class="empty">No chats yet.</div>'));
     if (showChats && !fullPage) { icons(); return; }
   }
-  $('#chat').innerHTML = (S.chat.length ? S.chat.map((c, idx) => `<div class="msg ${c.role}">${c.thumb ? `<img class="bill-thumb" src="${esc(c.thumb)}" alt="">` : ''}${esc(c.text)}${c.role === 'assistant' ? `<span class="src">${c.source === 'claude' ? 'Voxa · Claude' : c.source === 'gemini' ? 'Voxa · Gemini' : c.source === 'sarvam' ? 'Voxa · Sarvam AI' : 'Voxa · offline mode'}<button class="save-note play-btn ${V.speakingKey() === 'm' + c.at ? 'on' : ''}" data-play="${idx}" title="${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play this answer'}">${i(V.speakingKey() === 'm' + c.at ? 'square' : 'play')}${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play'}</button><button class="save-note" data-savenote="${idx}" ${c.savedNote ? 'disabled' : ''} title="Save to Voxa notes">${i(c.savedNote ? 'bookmark-check' : 'bookmark-plus')}${c.savedNote ? 'Saved' : 'Save to notes'}</button></span>` : ''}</div>${c.role === 'assistant' && c.cards ? c.cards.map((cd, ci) => cardOrButton(cd, c.at + '-' + ci)).join('') : ''}`).join('')
+  $('#chat').innerHTML = (S.chat.length ? S.chat.map((c, idx) => `<div class="msg ${c.role}">${c.thumb ? `<img class="bill-thumb" src="${esc(c.thumb)}" alt="">` : ''}${esc(c.text)}${c.role === 'assistant' ? `<span class="src">${srcTag(c.source)}<button class="save-note play-btn ${V.speakingKey() === 'm' + c.at ? 'on' : ''}" data-play="${idx}" title="${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play this answer'}">${i(V.speakingKey() === 'm' + c.at ? 'square' : 'play')}${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play'}</button><button class="save-note" data-savenote="${idx}" ${c.savedNote ? 'disabled' : ''} title="Save to Voxa notes">${i(c.savedNote ? 'bookmark-check' : 'bookmark-plus')}${c.savedNote ? 'Saved' : 'Save to notes'}</button></span>` : ''}</div>${c.role === 'assistant' && c.cards ? c.cards.map((cd) => (VC.has(cd) ? VC.render(cd, S.merchant.lang, S) : chatCard(cd))).join('') : ''}`).join('')
     : `<div class="voxa-empty"><div class="dot-ico ai" style="width:64px;height:64px;border-radius:20px">${i('bot')}</div><h2 class="card-title">${esc(intro)}</h2></div>`) + (busy ? '<div class="msg assistant typing">Voxa is thinking…</div>' : '');
   $('#chat').scrollTop = $('#chat').scrollHeight;
   icons();
@@ -2072,7 +2051,9 @@ function render() {
 subscribe((state) => {
   S = state;
   render();
+  if (window.VS) VS.onState();
 });
 </script>
+<script src="/js/shell.js?v=ai1"></script>
 </body>
 </html>

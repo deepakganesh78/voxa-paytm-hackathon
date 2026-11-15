@@ -50,10 +50,12 @@ window.V = (() => {
       <div class="side-scroll">
         ${sections.length ? `<div class="side-group">${esc(d.sectionsTitle || 'This screen')}</div>
           ${sections.map((s, k) => `<button class="side-link ${k === 0 ? 'on' : ''}" data-section="${s.id}">${i(s.icon)}<span>${esc(s.label)}</span>${s.count != null ? `<span class="count" data-count="${s.id}">${s.count}</span>` : ''}</button>`).join('')}` : ''}
-        <div class="side-group">Screens</div>
-        ${SCREENS.map((s) => `<a href="${s.href}" class="${(s.href === '/' ? here === '/' : here === s.href) ? 'on' : ''}">${i(s.icon)}<span>${esc(s.who)}${s.what ? `<span style="opacity:.7"> · ${esc(s.what.split(' · ')[0])}</span>` : ''}</span></a>`).join('')}
+        <div class="side-screens"><div class="side-group">Screens</div>
+        ${SCREENS.map((s) => `<a href="${s.href}" class="${(s.href === '/' ? here === '/' : here === s.href) ? 'on' : ''}">${i(s.icon)}<span>${esc(s.who)}${s.what ? `<span style="opacity:.7"> · ${esc(s.what.split(' · ')[0])}</span>` : ''}</span></a>`).join('')}</div>
       </div>
       <div class="side-card"><b>Demo mode</b><span id="sideAi">Fake money, live between all screens.</span><button class="btn" id="sideReset">${i('rotate-ccw')}Reset demo</button></div>`;
+    // a page can keep its sidebar to its own sections (the demo screens and reset move to its Settings)
+    if (d.compactSide) side.classList.add('compact');
     document.body.prepend(side);
 
     const scrim = document.createElement('div');
@@ -251,7 +253,7 @@ window.V = (() => {
     return new Blob([buf], { type: 'audio/wav' });
   }
 
-  function listenSarvam(lang, onText, onEnd, onRecording) {
+  function listenSarvam(lang, onText, onEnd, onRecording, opts = {}) {
     let cancelled = false;
     const ctl = { rec: null, stop() {
       if (!this.rec) { cancelled = true; onEnd && onEnd(); }
@@ -287,7 +289,27 @@ window.V = (() => {
       try { rec.start(); }
       catch (e) { stream.getTracks().forEach((t) => t.stop()); throw e; }
       onRecording && onRecording(true);
-      toast('Listening… tap the mic again when you finish');
+      // hands-free: stop by itself after he has spoken and then gone quiet for a moment
+      if (opts.autoStop && (window.AudioContext || window.webkitAudioContext)) {
+        try {
+          const ac = new (window.AudioContext || window.webkitAudioContext)();
+          const an = ac.createAnalyser(); an.fftSize = 1024;
+          ac.createMediaStreamSource(stream).connect(an);
+          const buf = new Uint8Array(an.fftSize);
+          let spoke = false, quietSince = Date.now();
+          const tick = () => {
+            if (rec.state === 'inactive') { ac.close().catch(() => {}); return; }
+            an.getByteTimeDomainData(buf);
+            let sum = 0; for (const v of buf) sum += (v - 128) * (v - 128);
+            const loud = Math.sqrt(sum / buf.length) > 6;
+            if (loud) { spoke = true; quietSince = Date.now(); }
+            if (spoke && Date.now() - quietSince > 1300) { ctl.stop(); ac.close().catch(() => {}); return; }
+            if (!spoke && Date.now() - t0 > 8000) { ctl.stop(); ac.close().catch(() => {}); return; }
+            requestAnimationFrame(tick);
+          };
+          tick();
+        } catch (e) { /* manual stop still works */ }
+      } else toast('Listening… tap the mic again when you finish');
       setTimeout(() => ctl.stop(), 15000);
     }).catch((e) => { if (!cancelled) { toast(e && e.name === 'NotAllowedError' ? MIC_BLOCKED : 'Microphone error: ' + (e && e.message)); onEnd && onEnd(); } });
     return ctl;
@@ -315,13 +337,13 @@ window.V = (() => {
   const MIC_BLOCKED = 'The microphone is blocked for this page. Click the lock icon in the address bar, allow Microphone, then try again.';
 
   // Returns { stop() }. onEnd runs exactly once, whatever happens (done, blocked, stopped early).
-  function listen(lang, onText, onEnd, onRecording) {
+  function listen(lang, onText, onEnd, onRecording, opts = {}) {
     let over = false;
     const end = () => { if (over) return; over = true; onEnd && onEnd(); };
     const useSarvam = (config.stt || config.sarvam) && !sarvamSttBroken && navigator.mediaDevices && window.MediaRecorder;
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!useSarvam && !SR) { toast('Voice input needs Chrome. You can type instead.'); end(); return null; }
-    const inner = useSarvam ? listenSarvam(lang, onText, end, onRecording) : listenBrowser(lang, SR, onText, end, onRecording);
+    const inner = useSarvam ? listenSarvam(lang, onText, end, onRecording, opts) : listenBrowser(lang, SR, onText, end, onRecording);
     // a blocked microphone never answers the request, so check the permission and say so instead of waiting
     try {
       navigator.permissions && navigator.permissions.query({ name: 'microphone' }).then((p) => {

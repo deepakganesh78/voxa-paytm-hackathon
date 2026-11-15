@@ -1,8 +1,22 @@
 # What Voxa can do
 
 Voxa is the AI accountant inside **Voxa Pay for Business** (Murugan's shop screen, `/business`).
-It works only for the shop owner. Its brain is **Sarvam AI `sarvam-105b`** with tool calling: it decides what to look up, calls the tools, then answers.
-Without a key, or if Sarvam fails, the same tools run on built-in rules, so the demo never stops.
+It works only for the shop owner. Its brain is **Gemini** (or Claude / Sarvam) with tool calling: it decides what to look up, calls the tools, then answers.
+Common questions (profit, sales, loans, Udhaar, weak days) are answered straight from the app data without an AI call, so they are instant and work offline.
+Without a key, or if the AI fails, the same tools run on built-in rules, so the demo never stops.
+
+## The app is built around Voxa
+
+- **Home** is the landing screen: a big ask bar (type, mic, camera), suggestion chips, today's briefing (stuck payments, Udhaar due, sales vs yesterday, a cost jump, regulars who stopped, loan eligibility, each with one tap), and a compact row of key numbers.
+- **The Copilot** stays docked beside every screen on a computer (drag its edge to resize, close it from the sparkle button) and never covers the screen an answer refers to. On a phone it is a composer at the bottom of every screen with a big mic, opening into a sheet. **Ask Voxa** in the menu opens the full conversation view with past chats.
+- **Ctrl/Cmd+K** opens a command bar anywhere: go to a screen or ask Voxa.
+- **Menu**: Home, Ask Voxa, Money (Sales, Payments, Costs & profit, Loan), Customers (Customers & Udhaar, Messages), Insights, Notes, Settings. Every screen has its own address (`#/costs?range=this_week`), so the back button and links work.
+- **Answers are cards**: Sales (chart), Profit, Customer list, Loan offer (sliders for amount and months), Payments, Insight and Confirm cards, in Tamil, Hindi or English, each with an "Open in …" link. Voxa can also open a screen with a filter, for example "show weak sales days" opens Sales insights with the weak days highlighted.
+- **Time ranges are exact**: today, yesterday, this week (Monday to today), last week, last 7 days, this month, last month, last 30/90 days, last 6/12 months, in all three languages. Every period answer says which period it used. Monthly bills (rent, electricity, salary, phone) are counted per day for part of a month.
+- **Nothing changes without your OK**: costs, cash sales, Udhaar entries, reminders to customers, support tickets, offers and loan applications appear as a Confirm card (amounts can be edited, people unticked). On Telegram the same request comes with Confirm / Cancel buttons.
+- **Voxa knows where you are**: the screen, its filters and the selected customer go with every question, and the suggestion chips change per screen.
+- **Hands-free voice**: switch it on next to the send button (or in Settings); speak, Voxa answers aloud, then listens again.
+- **Settings**: dark mode, hands-free, Developer (shows which AI and voice answered), the demo screens and Reset demo.
 
 ---
 
@@ -21,13 +35,14 @@ Every question starts from a live snapshot of the shop: today's money, every pay
 
 ## 2. Keep the books (the only things Voxa can change)
 
-Voxa can write to **Costs & profit**, **Voxa notes** and **support tickets**. Nothing else. It never changes sales, payments or the loan, and never messages customers.
+Voxa can write to **Costs & profit**, **Voxa notes**, **Udhaar**, **support tickets**, **offers** and a **loan application**, and every one of these waits for your Confirm tap. It never changes sales or payments.
 
 | Say or do | Result |
 |---|---|
-| "This month rent 6k, electricity 4k, salary 8k" | Saved as costs; profit updates |
-| "I sold 30 thousand in cash this month" | Saved as cash sales |
-| 📷 or 📎 **Upload** a bill photo | Reads only the bill's **total**, saves it as one cost line, adds a note. Several bills in a month add up |
+| "This month rent 6k, electricity 4k, salary 8k" | A Confirm card; saved as costs when you tap it |
+| "I sold 30 thousand in cash this month" | A Confirm card for cash sales |
+| 📷 or 📎 **Upload** a bill photo | Reads only the bill's **total** and offers to save it as one cost line |
+| "Remind everyone who owes me" | A Confirm card listing each customer and their message; sent only after you confirm |
 | "Remember to pay the milk supplier on Friday" | A note |
 | "Add it to the notes" / "அதை நோட்ல சேர்" | Saves Voxa's last answer to notes, with its dashboard |
 
