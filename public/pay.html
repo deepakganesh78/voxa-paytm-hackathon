@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Voxa Pay</title>
+<meta name="theme-color" content="#0a2554">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+</head>
+<body data-role="customer">
+<header class="shell" data-title="Voxa Pay" data-sub="Customer app" data-user="Patnam Sanjeevi" data-user-role="Customer"></header>
+<script>
+  // /naveen opens the same app as Naveen
+  window.PAYER = location.pathname.replace(/\/$/, '') === '/naveen' ? 'naveen' : null;
+  if (window.PAYER) { const h = document.querySelector('header.shell'); h.dataset.user = 'Naveen Roshan'; }
+</script>
+
+<main class="phone stack" style="gap:14px">
+  <div class="page-head" style="margin-bottom:6px"><div><h1>Pay a shop</h1><div class="crumb">Home / Voxa Pay / Pay</div></div></div>
+  <section class="panel">
+    <div class="panel-body row between">
+      <div>
+        <div class="small muted" id="acct">Voxa Bank</div>
+        <div class="amt xl" id="balance">₹0</div>
+      </div>
+      <div class="dot-ico info" style="width:42px;height:42px;border-radius:50%;font-weight:600">S</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-body stack" style="gap:14px">
+      <div class="row">
+        <div class="dot-ico ok"><i data-lucide="store"></i></div>
+        <div class="grow"><h2>Pay Murugan and Co</h2><div class="small muted">murugan@voxapay · Mylapore, Chennai</div></div>
+      </div>
+      <div id="offer" class="offer hidden"><i data-lucide="tag"></i><span id="offerText"></span></div>
+      <label class="amount-field"><span>₹</span><input id="amount" inputmode="numeric" placeholder="0" autocomplete="off" aria-label="Amount"></label>
+      <div class="chips" id="quick">
+        <button class="chip" data-amt="340">₹340</button>
+        <button class="chip" data-amt="2340">₹2,340</button>
+        <button class="chip" data-amt="18500">₹18,500</button>
+      </div>
+      <input id="note" class="input" placeholder="Add a note (optional)" maxlength="60">
+      <label class="check hidden" id="useOfferRow"><input type="checkbox" id="useOffer" checked> Use the shop's offer</label>
+      <button class="btn primary lg block" id="payBtn"><i data-lucide="send"></i>Pay</button>
+      <p class="tiny muted" style="text-align:center">Any 4-digit PIN works. No real money moves.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Updates</h2><span class="hint">from Voxa Pay</span></div>
+    <div class="rows" id="notes" style="margin-top:6px"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>History</h2></div>
+    <div class="rows" id="history" style="margin-top:6px"></div>
+  </section>
+</main>
+
+<div class="sheet hidden" id="sheet"><div class="sheet-panel" id="panel" role="dialog" aria-modal="true"></div></div>
+
+<script src="/vendor/lucide.js"></script>
+<script src="/js/common.js"></script>
+<script>
+const { inr, esc, $, i, icons, api, subscribe, badge, vroute, ago, time, toast } = V;
+let S = null;
+let openTxn = null;
+let pin = '';
+
+const params = new URLSearchParams(location.search);
+if (params.get('amount')) $('#amount').value = params.get('amount');
+const amountValue = () => Number(String($('#amount').value).replace(/[^\d]/g, ''));
+
+$('#quick').addEventListener('click', (e) => { const b = e.target.closest('[data-amt]'); if (b) $('#amount').value = b.dataset.amt; });
+$('#payBtn').addEventListener('click', () => {
+  if (!amountValue()) return toast('Enter an amount first.');
+  pin = '';
+  openSheet('pin');
+});
+
+function openSheet(kind) {
+  const sh = $('#sheet');
+  sh.classList.remove('hidden');
+  requestAnimationFrame(() => sh.classList.add('open'));
+  if (kind === 'pin') renderPin(); else renderTxnSheet();
+}
+function closeSheet() {
+  const sh = $('#sheet');
+  sh.classList.remove('open');
+  setTimeout(() => sh.classList.add('hidden'), 200);
+  openTxn = null;
+}
+$('#sheet').addEventListener('click', (e) => { if (e.target.id === 'sheet') closeSheet(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+
+function renderPin() {
+  const amt = amountValue();
+  const offer = S && S.offers.find((o) => o.active);
+  const use = offer && $('#useOffer').checked;
+  const pay = use ? amt - Math.round(amt * offer.percent / 100) : amt;
+  $('#panel').innerHTML = `
+    <div style="text-align:center">
+      <div class="small muted">Paying Murugan and Co</div>
+      <div class="amt xl" style="margin-top:2px">${inr(pay)}</div>
+      ${use ? `<div class="small up" style="margin-top:4px">${esc(offer.label)} applied. You save ${inr(amt - pay)}.</div>` : ''}
+      <div class="small ink-2" style="margin-top:14px">Enter UPI PIN</div>
+      <div class="pin-dots">${[0, 1, 2, 3].map((k) => `<span class="${k < pin.length ? 'on' : ''}"></span>`).join('')}</div>
+      <div class="keypad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 'del', 0, 'ok'].map((k) => `<button data-k="${k}" aria-label="${k === 'del' ? 'Delete' : k === 'ok' ? 'Confirm' : k}">${k === 'del' ? i('delete') : k === 'ok' ? i('check') : k}</button>`).join('')}</div>
+    </div>`;
+  icons();
+  $('#panel').querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => key(b.dataset.k)));
+}
+
+function key(k) {
+  if (k === 'del') pin = pin.slice(0, -1);
+  else if (k === 'ok') { if (pin.length === 4) return submit(); }
+  else if (pin.length < 4) pin += k;
+  renderPin();
+  if (pin.length === 4) setTimeout(submit, 180);
+}
+
+let submitting = false;
+async function submit() {
+  if (submitting) return;
+  submitting = true;
+  try {
+    const r = await api('/api/pay', { amount: amountValue(), note: $('#note').value, useOffer: $('#useOffer').checked, payer: PAYER });
+    openTxn = r.txn.id;
+    $('#amount').value = '';
+    $('#note').value = '';
+    renderTxnSheet();
+  } catch (e) { closeSheet(); } finally { submitting = false; }
+}
+
+const txnById = (id) => S && S.txns.find((t) => t.id === id);
+
+function renderTxnSheet() {
+  const t = txnById(openTxn);
+  if (!t) { $('#panel').innerHTML = '<div class="empty">Starting payment…</div>'; return; }
+  const ic = { success: 'check', pending: 'hourglass', failed: 'x', processing: 'loader', awaiting_bank: 'loader', reversed: 'undo-2' }[t.status];
+  const title = { success: 'Payment successful', pending: 'Payment pending', failed: 'Payment failed', processing: 'Payment on its way…', awaiting_bank: 'Payment on its way…', reversed: 'Money refunded' }[t.status];
+  let explain = '';
+  if (t.status === 'pending') explain = `<div class="note-plain warn">Amount debited. The status of this payment will be updated by <b>${esc(t.deadline)}</b>.</div>`;
+  if (t.status === 'failed') explain = `<div class="note-plain">${esc(t.failReason || 'Payment failed.')}</div>`;
+  if (t.status === 'reversed') explain = `<div class="note-plain">The stuck payment was reversed. ${inr(t.amount)} is back in your account.</div>`;
+  const canComplain = ['pending', 'success', 'reversed', 'failed'].includes(t.status) && t.kind !== 'refund' && !t.customerReported;
+  $('#panel').innerHTML = `
+    <div class="stack" style="gap:16px">
+      <div style="text-align:center">
+        <div class="result-badge ${t.status}">${i(ic)}</div>
+        <h1 style="font-size:20px">${title}</h1>
+        <div class="amt xl" style="margin-top:2px">${inr(t.amount)}</div>
+        <div class="small muted">to ${esc(t.toName)} · ${time(t.createdAt)}</div>
+      </div>
+      ${explain}
+      ${['awaiting_bank', 'processing'].includes(t.status) ? '<p class="small muted" style="text-align:center">This usually takes a few seconds. Please keep this screen open.</p>' : ''}
+      ${['pending', 'reversed', 'failed'].includes(t.status) ? `<div class="mono muted" style="text-align:center">UPI ref (UTR) ${esc(t.utr)}</div>` : ''}
+      ${canComplain ? `<div class="stack" style="gap:8px"><select class="input" id="complainWhy"><option value="not_received">Money left my account, shop did not get it</option><option value="paid_twice">I paid twice</option><option value="refund_missing">Waiting for my money back</option><option value="other">Something else</option></select><button class="btn block" id="complain">${i('flag')}Report a problem with this payment</button></div>` : t.customerReported ? `<div class="note-plain">${i('flag')} You reported this payment. The support team is looking at it.</div>` : ''}
+      <button class="btn primary block lg" id="closeSheet">Done</button>
+    </div>`;
+  icons();
+  $('#closeSheet').onclick = closeSheet;
+  if (canComplain) $('#complain').onclick = () => api('/api/customer/complaint', { txnId: t.id, reason: $('#complainWhy').value }).then(() => toast('Reported. The support team will look at it.'));
+}
+
+const noteIcon = { refund: ['undo-2', 'ok'], receipt: ['receipt', 'info'], verified: ['shield-check', 'ai'], voxa: ['bot', 'ai'] };
+
+// which customer this screen is: /naveen is Naveen, /pay is Sanjeevi
+function render() {
+  const c = PAYER ? S.payers[PAYER] : S.customer;
+  const mine = (t) => (t.payerId || 'sanjeevi') === (PAYER || 'sanjeevi');
+  $('#balance').textContent = inr(c.balance);
+  $('#acct').textContent = `${c.bankName} · ${c.acct}`;
+  const offer = S.offers.find((o) => o.active);
+  $('#offer').classList.toggle('hidden', !offer);
+  $('#useOfferRow').classList.toggle('hidden', !offer);
+  if (offer) $('#offerText').textContent = `Murugan and Co: ${offer.label}`;
+
+  const notes = S.notes.customer.filter((n) => (n.payer || 'sanjeevi') === (PAYER || 'sanjeevi')).slice(0, 8);
+  $('#notes').innerHTML = notes.length ? notes.map((n) => {
+    const [ic, tone] = noteIcon[n.kind] || ['bell', ''];
+    return `<div class="r top"><div class="dot-ico ${tone}">${i(ic)}</div><div class="grow"><div class="small" style="color:var(--ink)">${esc(n.text)}</div><div class="tiny muted" style="margin-top:3px">${ago(n.at)}</div></div></div>`;
+  }).join('') : '<div class="empty">Payment updates appear here.</div>';
+
+  const tx = S.txns.filter(mine).slice(0, 15);
+  $('#history').innerHTML = tx.length ? tx.map((t) => `
+    <button class="r" data-tx="${t.id}">
+      <div class="dot-ico ${t.kind === 'refund' ? 'ok' : ''}">${i(t.kind === 'refund' ? 'undo-2' : 'store')}</div>
+      <div class="grow"><div class="strong" style="font-size:14px">${t.kind === 'refund' ? 'Refund from ' + esc(t.fromName) : esc(t.toName)}</div>
+        <div class="tiny muted">${time(t.createdAt)}${t.note ? ' · ' + esc(t.note) : ''}</div></div>
+      <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div class="amt">${t.kind === 'refund' ? '+' : '−'}${inr(t.amount)}</div>${badge(t.status)}</div>
+    </button>`).join('') : '<div class="empty">No payments yet. Pay Murugan and Co above to start.</div>';
+  document.querySelectorAll('[data-tx]').forEach((b) => (b.onclick = () => {
+    const t = txnById(b.dataset.tx);
+    if (!t || t.kind === 'refund') return;
+    openTxn = t.id;
+    openSheet('txn');
+  }));
+  if (openTxn && $('#sheet').classList.contains('open')) renderTxnSheet();
+}
+
+subscribe((state) => { S = state; render(); });
+</script>
+</body>
+</html>

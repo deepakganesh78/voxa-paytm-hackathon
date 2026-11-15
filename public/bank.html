@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Voxa Bank</title>
+<meta name="theme-color" content="#2b2210">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+<style>
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .mode { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); text-align: left; transition: transform 140ms var(--ease-out), border-color 150ms ease, background 150ms ease; }
+  .mode:active { transform: scale(0.98); }
+  .mode b { display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: 14px; }
+  .mode span { font-size: 12.5px; color: var(--ink-3); }
+  .mode.on { border-color: var(--role); background: var(--role-bg); box-shadow: 0 0 0 1px var(--role); }
+  @media (max-width: 520px) { .modes { grid-template-columns: 1fr; } }
+  .incoming { border: 2px solid var(--warn-line); background: var(--warn-bg); border-radius: var(--r-lg); padding: 16px; display: flex; flex-direction: column; gap: 12px; animation: pop 400ms var(--ease-out); }
+  .decide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .decide .btn { min-height: 46px; font-size: 15px; font-weight: 600; }
+  .warnbtn { background: #fff; border-color: #e6a23c; color: #8a4b00; }
+  @keyframes pop { from { transform: scale(0.97); opacity: 0.4; } }
+</style>
+</head>
+<body data-role="bank">
+<header class="shell" data-title="Voxa Bank" data-sub="Core banking and NPCI switch" data-user="Deepak Ganesh" data-user-role="Bank operator"></header>
+
+<main class="page stack" style="gap:20px">
+  <div class="page-head" style="margin-bottom:0"><div><h1>Bank operations</h1><div class="crumb">Home / Voxa Bank / Operations</div></div></div>
+  <div class="cols two">
+    <section class="panel incoming-panel">
+      <div class="panel-head"><h2>Incoming payments</h2><span class="tag" id="inCount">0 waiting</span></div>
+      <div class="panel-sub">When Sanjeevi pays, the payment waits here. You decide what the bank does with it.</div>
+      <div class="panel-body stack" id="incoming"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Accounts</h2><button class="btn sm" id="topup"><i data-lucide="plus"></i>₹10,000 to Sanjeevi</button></div>
+      <div class="figures" id="accounts" style="margin-top:8px"></div>
+    </section>
+  </div>
+
+  <div class="cols two">
+    <section class="panel">
+      <div class="panel-head"><h2>Stuck payments to reconcile</h2><span class="row" style="gap:8px"><button class="btn sm" id="nextDay" title="Demo clock: pretend a day has passed"><i data-lucide="sunrise"></i>1 day passes</button><span class="tag pending" id="pendCount">0</span></span></div>
+      <div class="panel-body stack" id="pending"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Requests from Voxa Support</h2></div>
+      <div class="panel-body stack" id="requests"></div>
+    </section>
+  </div>
+
+  <div class="cols two">
+    <section class="panel">
+      <div class="panel-head"><h2>Nightly settlement</h2><span class="hint">Voxa Pay to Murugan's bank</span></div>
+      <div class="figures" id="settleStats" style="margin-top:8px"></div>
+      <hr class="divider">
+      <div class="panel-body stack">
+        <label class="check"><input type="checkbox" id="hold"> Hold the next settlement (KYC name mismatch)</label>
+        <label class="check"><input type="checkbox" id="dbl"> Take the loan repayment twice next time (bug)</label>
+        <div><button class="btn primary" id="settle"><i data-lucide="landmark"></i>Run settlement now</button></div>
+      </div>
+      <div class="rows" id="settlements"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>All payments</h2><span class="hint">with transaction IDs</span></div>
+      <div class="table-wrap" style="max-height:520px;border-radius:0 0 14px 14px;margin-top:8px"><table class="table" id="ledger"></table></div>
+    </section>
+  </div>
+</main>
+
+<script src="/vendor/lucide.js"></script>
+<script src="/js/common.js"></script>
+<script>
+const { inr, esc, $, $$, i, api, subscribe, badge, route, ago, time, toast } = V;
+let S;
+
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-decide]'); if (b) { b.closest('.incoming').querySelectorAll('button').forEach((x) => (x.disabled = true)); api('/api/bank/decide', { txnId: b.dataset.id, decision: b.dataset.decide }).catch(() => b.closest('.incoming').querySelectorAll('button').forEach((x) => (x.disabled = false))); } });
+$('#topup').onclick = () => api('/api/bank/topup', {}).then(() => toast('Added ₹10,000 to Sanjeevi.'));
+$('#nextDay').onclick = () => api('/api/sim/nextday', {}).then((r) => V.toast(r.moved ? `Day ${r.day}: ${r.moved} stuck payment sent to support` : `Day ${r.day}: nothing overdue`));
+$('#hold').onchange = (e) => api('/api/bank/scenario', { holdNextSettlement: e.target.checked });
+$('#dbl').onchange = (e) => api('/api/bank/scenario', { doubleDeductionNext: e.target.checked });
+$('#settle').onclick = () => api('/api/bank/settle', {}).then((r) => toast(`Settlement ${r.settlement.id}: ${r.settlement.status === 'held' ? 'on hold' : 'paid'}.`));
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-resolve]');
+  if (b) { b.disabled = true; api('/api/bank/resolve', { txnId: b.dataset.id, action: b.dataset.resolve }).catch(() => (b.disabled = false)); }
+  const d = e.target.closest('[data-reqdone]');
+  if (d) api('/api/bank/request/done', { id: d.dataset.reqdone });
+});
+
+function render() {
+  const waiting = S.txns.filter((t) => t.status === 'awaiting_bank');
+  $('#inCount').textContent = waiting.length + ' waiting';
+  $('#inCount').className = 'tag ' + (waiting.length ? 'pending' : '');
+  $('#incoming').innerHTML = waiting.length ? waiting.map((t) => `
+    <div class="incoming">
+      <div class="row between top"><div><div class="amt lg">${inr(t.amount)}</div><div class="small ink-2">${esc(t.fromName)} is paying ${esc(t.toName)} · ${ago(t.createdAt)}</div></div>${badge('pending', 'Waiting for you')}</div>
+      <div class="decide">
+        <button class="btn ok" data-decide="success" data-id="${t.id}">${i('check')}Go through</button>
+        <button class="btn warnbtn" data-decide="timeout" data-id="${t.id}">${i('clock')}Time out</button>
+        <button class="btn danger" data-decide="decline" data-id="${t.id}">${i('x')}Fail</button>
+      </div>
+      <div class="tiny muted">Go through: money reaches Murugan. Time out: taken from Sanjeevi but stuck. Fail: nothing moves.</div>
+    </div>`).join('') : '<div class="muted small">No payment waiting. When Sanjeevi pays from Voxa Pay, it appears here.</div>';
+  $('#accounts').innerHTML = `
+    <div><div class="fig-l">Patnam Sanjeevi · ${esc(S.customer.acct)}</div><div class="fig-v">${inr(S.customer.balance)}</div></div>
+    <div><div class="fig-l">Murugan and Co · ${esc(S.merchant.acct)}</div><div class="fig-v">${inr(S.merchant.bankBalance)}</div></div>`;
+
+  const pend = S.txns.filter((t) => t.status === 'pending');
+  $('#pendCount').textContent = pend.length;
+  $('#pending').innerHTML = pend.length ? pend.map((t) => `
+    <div class="alert"><div class="alert-body">
+      <div class="row between"><div class="amt lg">${inr(t.amount)}</div>${badge('pending')}</div>
+      <div class="small ink-2">Sanjeevi to Murugan and Co · debited ${time(t.debitedAt)} · <span class="mono">UTR ${esc(t.utr)}</span></div>
+      ${route(t)}
+      <div class="small muted">Must be resolved by ${esc(t.deadline)} (T+5)${t.ticketId ? ' · ticket ' + esc(t.ticketId) : ''}${t.cashTaken ? ' · customer paid cash' : ''}</div>
+      <div class="row wrap"><button class="btn ok" data-resolve="credit" data-id="${t.id}">${i('check')}Credit merchant (late)</button><button class="btn" data-resolve="reverse" data-id="${t.id}">${i('undo-2')}Reverse to customer</button></div>
+    </div></div>`).join('') : '<div class="muted small">Nothing stuck. Use “Time out” on an incoming payment to make one.</div>';
+
+  const reqs = S.bankRequests.filter((r) => !r.done);
+  $('#requests').innerHTML = reqs.length ? reqs.map((r) => `
+    <div class="note-plain ai stack" style="gap:10px">
+      <div class="row between"><span class="strong">${esc(r.from)} · ticket ${esc(r.ticketId)}</span><span class="tiny">${ago(r.at)}</span></div>
+      <div>${esc(r.text)}</div>
+      <div class="row wrap"><button class="btn ok sm" data-resolve="credit" data-id="${r.txnId}">Credit merchant</button><button class="btn sm" data-resolve="reverse" data-id="${r.txnId}">Reverse</button><button class="btn sm quiet" data-reqdone="${r.id}">Dismiss</button></div>
+    </div>`).join('') : '<div class="muted small">No requests. Naveen sends one with “Chase bank” on a ticket.</div>';
+
+  $('#hold').checked = S.scenario.holdNextSettlement;
+  $('#dbl').checked = S.scenario.doubleDeductionNext;
+  const on = S.loan.status === 'active';
+  const fixed = S.loan.type === 'fixed';
+  const exp = !on ? 0 : Math.min(fixed ? S.loan.daily : Math.round(S.merchant.unsettled * S.loan.pct / 100), S.loan.outstanding, S.merchant.unsettled);
+  $('#settleStats').innerHTML = `
+    <div><div class="fig-l">To settle</div><div class="fig-v">${inr(S.merchant.unsettled)}</div></div>
+    <div><div class="fig-l">Loan repayment ${on ? (fixed ? '(fixed daily)' : `(${S.loan.pct}% of sales)`) : ''}</div><div class="fig-v">${on ? inr(exp) : 'None'}</div><div class="fig-s">${on ? esc(S.loan.name || 'loan active') : 'no loan yet'}</div></div>`;
+  $('#settlements').innerHTML = S.settlements.map((s) => `
+    <div class="r"><div class="grow"><div class="strong" style="font-size:14px">${esc(s.id)} <span class="tiny muted">${time(s.at)}</span></div><div class="tiny muted">Gross ${inr(s.gross)} · loan ${inr(s.deduction)} · net ${inr(s.net)}${s.holdReason ? ' · ' + esc(s.holdReason) : ''}</div></div>${badge(s.status)}</div>`).join('');
+
+  const statusText = { awaiting_bank: 'Waiting for bank', processing: 'Processing', success: 'Success', pending: 'Pending', failed: 'Failed', reversed: 'Refunded' };
+  $('#ledger').innerHTML = S.txns.length ? `<thead><tr><th>Time</th><th>Payment ID</th><th>UTR (UPI ref)</th><th>From → to</th><th class="r">Amount</th><th>Status</th></tr></thead><tbody>${S.txns.map((t) => `
+    <tr><td>${time(t.createdAt)}</td><td class="mono">${esc(t.id)}</td><td class="mono">${esc(t.utr)}</td><td>${esc(t.fromName)} → ${esc(t.toName)}</td><td class="r">${inr(t.amount)}</td><td>${esc(statusText[t.status] || t.status)}</td></tr>`).join('')}</tbody>`
+    : '<tbody><tr><td>No payments yet today.</td></tr></tbody>';
+}
+subscribe((s) => { S = s; render(); });
+</script>
+</body>
+</html>

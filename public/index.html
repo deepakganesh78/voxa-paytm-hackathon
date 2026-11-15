@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Voxa Sandbox</title>
+<meta name="theme-color" content="#0a2554">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+<style>
+  .who { display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center; padding: 16px; text-decoration: none; color: inherit; transition: background 150ms ease; }
+  .who + .who { border-top: 1px solid var(--line); }
+  .who .badge-ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: #fff; }
+  .who .badge-ico svg.lucide { width: 21px; height: 21px; }
+  .who .qr { display: none; }
+  @media (min-width: 720px) { .who { grid-template-columns: 44px 1fr auto 104px; } .who .qr { display: block; width: 104px; height: 104px; } }
+  @media (hover: hover) and (pointer: fine) { .who:hover { background: var(--surface-2); } }
+  .lead { max-width: 60ch; }
+</style>
+</head>
+<body data-role="customer">
+<header class="shell" data-title="Voxa Sandbox" data-sub="The AI accountant for every merchant" data-user="Voxa team" data-user-role="Hackathon demo"></header>
+<main class="page stack" style="gap:20px;max-width:960px">
+  <div class="stack" style="gap:6px;margin-top:8px">
+    <h1>Open your screen</h1>
+    <p class="ink-2 lead">Everyone uses the same link. Open only your own screen. On a phone, scan its code with the camera. The menu on the left switches screens at any time.</p>
+  </div>
+
+  <section class="panel" style="overflow:hidden">
+    <a class="who" href="/pay">
+      <div class="badge-ico" style="background:#0b63ce"><i data-lucide="smartphone"></i></div>
+      <div><div class="strong">Patnam Sanjeevi · Customer</div><div class="small ink-2">Voxa Pay. Pays Murugan and Co from a phone.</div></div>
+      <span class="tag">Phone</span>
+      <div class="qr" data-qr="/pay"></div>
+    </a>
+    <a class="who" href="/bank">
+      <div class="badge-ico" style="background:#a86a00"><i data-lucide="landmark"></i></div>
+      <div><div class="strong">Deepak Ganesh · Bank</div><div class="small ink-2">Voxa Bank. Makes payments time out or fail, credits late or reverses, runs settlement.</div></div>
+      <span class="tag">Laptop</span>
+      <div class="qr" data-qr="/bank"></div>
+    </a>
+    <a class="who" href="/business">
+      <div class="badge-ico" style="background:#0c7d55"><i data-lucide="store"></i></div>
+      <div><div class="strong">Deepak Ganesh · Merchant</div><div class="small ink-2">Voxa Pay for Business. Murugan's shop, with Voxa the AI accountant.</div></div>
+      <span class="tag">Phone + laptop</span>
+      <div class="qr" data-qr="/business"></div>
+    </a>
+    <a class="who" href="/support">
+      <div class="badge-ico" style="background:#5b3fd0"><i data-lucide="headphones"></i></div>
+      <div><div class="strong">Naveen Roshan · Support</div><div class="small ink-2">Voxa Support. Tickets, Voxa's summaries and the agent log.</div></div>
+      <span class="tag">Laptop</span>
+      <div class="qr" data-qr="/support"></div>
+    </a>
+  </section>
+
+  <section class="panel">
+    <div class="panel-body stack" style="gap:10px">
+      <div class="row wrap" id="status"><span class="tag">Checking setup…</span></div>
+      <p class="tiny muted">Paytm Build for India AI Hackathon, Chennai, 15 Nov 2026. Voxa Pay, Voxa Bank and Voxa Support are demo apps. No real money moves.</p>
+    </div>
+  </section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="/vendor/lucide.js"></script>
+<script src="/js/common.js"></script>
+<script>
+document.querySelectorAll('[data-qr]').forEach((el) => { if (window.QRCode) new QRCode(el, { text: location.origin + el.dataset.qr, width: 104, height: 104, colorDark: '#0b1b33' }); });
+V.ready().then((c) => {
+  document.getElementById('status').innerHTML = `
+    <span class="tag ${c.ai ? 'claude' : ''}">${V.i(c.ai ? 'sparkles' : 'cpu')}${c.ai ? 'Voxa agent: ' + c.brainName + ' · ' + c.model : 'Voxa agent: offline rules (add ANTHROPIC_API_KEY for Claude)'}</span>
+    <span class="tag ${c.sarvam ? 'success' : ''}">${V.i('volume-2')}${c.sarvam ? 'Voice: Sarvam Bulbul' : 'Voice: browser (add SARVAM_API_KEY for Sarvam)'}</span>`;
+  V.icons();
+});
+V.subscribe(() => {});
+</script>
+</body>
+</html>

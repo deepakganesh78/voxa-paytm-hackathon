@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: voxa-sandbox
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/config
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SARVAM_API_KEY
+        sync: false
+      - key: RESET_PIN
+        sync: false

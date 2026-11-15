@@ -1,0 +1,1854 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Voxa Pay for Business</title>
+<meta name="theme-color" content="#2f45d9">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+<style>
+  .dash { display: grid; gap: 20px; grid-template-columns: 1fr; }
+  @media (min-width: 1200px) { .dash { grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); } .dash .span2 { grid-column: 1 / -1; } }
+  .pair { display: grid; gap: 20px; grid-template-columns: 1fr; }
+  @media (min-width: 760px) { .pair { grid-template-columns: 1fr 1fr; } }
+  .kpis.five { grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 900px) { .kpis.five { grid-template-columns: repeat(5, 1fr); } }
+  .kpis.five .v { font-size: 22px; }
+  .loan-grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
+  @media (min-width: 1100px) { .loan-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); } }
+  .loan-inputs { display: grid; gap: 18px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .loan-inputs { grid-template-columns: 1.3fr 1fr 1.3fr; } }
+  .li { display: flex; flex-direction: column; gap: 6px; }
+  .li-l { font-size: 14px; color: var(--ink-2); font-weight: 500; }
+  .li-v { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; color: var(--side-b); font-variant-numeric: tabular-nums; }
+  .li input[type=range] { width: 100%; accent-color: var(--violet); height: 28px; }
+  .li .pills button { min-height: 40px; min-width: 56px; font-size: 15px; }
+  .words { display: flex; flex-direction: column; gap: 10px; }
+  .word { display: flex; gap: 12px; align-items: flex-start; font-size: 15.5px; line-height: 1.5; color: var(--ink-2); }
+  .word svg.lucide { color: var(--violet); margin-top: 3px; width: 20px; height: 20px; }
+  .word b { color: var(--ink); }
+  .voxa-panel { display: flex; flex-direction: column; height: calc(100dvh - 190px); min-height: 520px; }
+  .voxa-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .voxa-chat { flex: 1; max-height: none; padding: 16px 18px; gap: 12px; }
+  .voxa-chat .msg { font-size: 16px; max-width: 78%; }
+  .voxa-composer { padding: 14px 18px 18px; border-top: 0; }
+  .voxa-composer .input { min-height: 52px; font-size: 16px; }
+  .voxa-composer .btn.icon { width: 52px; min-height: 52px; }
+  .mic.big { width: 52px; height: 52px; background: linear-gradient(135deg, var(--side-a), var(--violet)); }
+  .voxa-empty { margin: auto; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; max-width: 46ch; padding: 30px 0; }
+  .vcard { align-self: flex-start; width: min(100%, 640px); background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow); }
+  .vcard-h { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--side-b); }
+  .vcard-h svg.lucide { color: var(--violet); }
+  .vcard-k { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .vcard-k span { display: block; font-size: 12px; color: var(--ink-3); }
+  .vcard-k b { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  @media (max-width: 560px) { .vcard-k { grid-template-columns: 1fr 1fr; } }
+  .vcard .btn { align-self: flex-start; }
+  .flowbar { display: flex; height: 34px; border-radius: 10px; overflow: hidden; gap: 2px; background: var(--surface-2); }
+  .flowbar span { display: block; height: 100%; }
+  .empty-hero { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 40px 20px; }
+  .empty-hero .btn.lg { white-space: normal; height: auto; padding: 12px 18px; }
+  .estimate-banner { border: 2px solid #f3b13c; background: #fff6e0; border-radius: var(--r-lg); padding: 14px 16px; color: #6b4300; }
+  .estimate-banner svg.lucide { color: #d97706; width: 26px; height: 26px; }
+  .estimate-banner b { display: block; font-size: 17px; color: #7a4a00; }
+  .estimate-banner span { display: block; font-size: 14px; margin-top: 2px; }
+  .linkbtn { border: 0; background: none; padding: 0; color: var(--violet); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; font-size: inherit; }
+  .loan-tabs button { min-height: 38px; padding: 0 16px; font-size: 14px; }
+  .checks { display: grid; gap: 10px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .checks { grid-template-columns: 1fr 1fr 1fr; } }
+  .chk { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: var(--r-md); background: var(--surface-2); }
+  .chk svg.lucide { width: 20px; height: 20px; margin-top: 1px; color: var(--ok); }
+  .chk:has(.lucide-circle-help) svg.lucide { color: var(--warn); }
+  .chk:has(.lucide-circle-x) svg.lucide { color: var(--bad); }
+  .chk b { display: block; font-weight: 600; font-size: 14px; }
+  .chk span { display: block; font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+  .steps-list { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; color: var(--ink-2); }
+  .note-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .note-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1300px) { .note-grid { grid-template-columns: 1fr 1fr 1fr; } }
+  .skills-panel { padding: 14px 18px; border-bottom: 1px solid var(--line); max-height: 46vh; overflow-y: auto; background: var(--surface-2); }
+  .skills-grid { display: grid; gap: 12px; grid-template-columns: 1fr; text-align: left; width: 100%; }
+  @media (min-width: 900px) { .skills-grid { grid-template-columns: repeat(3, 1fr); } }
+  .skills-grid.compact { max-width: 900px; margin-top: 8px; }
+  .skill { background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px; display: flex; flex-direction: column; gap: 10px; justify-content: space-between; }
+  .skill b { font-weight: 600; font-size: 14.5px; }
+  .skill p { font-size: 13px; color: var(--ink-2); margin-top: 3px; }
+  .skill .tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .skill code { font-family: 'Geist Mono', monospace; font-size: 11px; background: var(--ai-bg); color: var(--ai); padding: 2px 6px; border-radius: 6px; }
+  .skill .chip { align-self: flex-start; white-space: normal; text-align: left; height: auto; padding: 6px 12px; }
+  .voxa-empty { max-width: 960px; }
+  .bill-thumb { display: block; width: 120px; border-radius: 8px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.4); }
+  .cam { width: 52px; min-height: 52px; border-radius: 50%; cursor: pointer; }
+  .plan-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .plan-grid { grid-template-columns: 1fr 1fr; } }
+  .plan-grid.compact { grid-template-columns: 1fr; gap: 8px; }
+  .plan-item { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: var(--r-md); background: var(--surface-2); }
+  .plan-grid.compact .plan-item { padding: 8px 10px; align-items: center; }
+  .plan-item b { display: block; font-size: 15px; font-weight: 600; }
+  .plan-item p { font-size: 14px; color: var(--ink-2); margin-top: 4px; line-height: 1.45; }
+  .plan-item span { display: block; font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+  /* Ask Voxa: a soft light-blue glow sweeps round the button every 10 seconds */
+  .fab { overflow: visible; isolation: isolate; }
+  .fab::before { content: ''; position: absolute; inset: -4px; border-radius: 999px; z-index: -1; padding: 3px;
+    background: conic-gradient(from var(--glow-a, 0deg), transparent 0deg, rgba(120, 220, 255, 0) 200deg, rgba(120, 220, 255, 0.95) 300deg, #ffffff 330deg, rgba(120, 220, 255, 0.95) 345deg, transparent 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+    opacity: 0; animation: fab-sweep 10s linear infinite; }
+  .fab::after { content: ''; position: absolute; inset: -6px; border-radius: 999px; z-index: -2; box-shadow: 0 0 0 0 rgba(79, 209, 232, 0); animation: fab-halo 10s ease-out infinite; }
+  @property --glow-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  @keyframes fab-sweep { 0%, 78% { opacity: 0; --glow-a: 0deg; } 80% { opacity: 1; } 96% { opacity: 1; --glow-a: 360deg; } 100% { opacity: 0; --glow-a: 360deg; } }
+  @keyframes fab-halo { 0%, 80% { box-shadow: 0 0 0 0 rgba(79, 209, 232, 0); } 88% { box-shadow: 0 0 22px 6px rgba(79, 209, 232, 0.55); } 100% { box-shadow: 0 0 0 0 rgba(79, 209, 232, 0); } }
+  @media (prefers-reduced-motion: reduce) { .fab::before, .fab::after { animation: none; } }
+
+  /* Ask Voxa docked over whatever page is open */
+  .voxa-close { display: none; }
+  .upload-btn { min-height: 44px; padding: 0 14px; gap: 6px; }
+  .crm-top { display: grid; grid-template-columns: 1.1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .crm-top { grid-template-columns: 1fr; } }
+  .tg { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
+  .tg input { display: none; }
+  .tg span { width: 38px; height: 22px; border-radius: 11px; background: #cbd5e1; position: relative; transition: background 150ms ease; flex: none; }
+  .tg span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 150ms ease; }
+  .tg input:checked + span { background: #2f45d9; }
+  .tg input:checked + span::after { transform: translateX(16px); }
+  .crm-sub { display: flex; flex-direction: column; gap: 8px; padding-left: 14px; border-left: 2px solid var(--line); }
+  .crm-sub.off { opacity: 0.5; pointer-events: none; }
+  .mini-time { width: 120px; min-height: 34px; display: inline-block; margin-left: 48px; }
+  .link-box { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 12px; border: 1px solid #b9c8ff; border-radius: 12px; background: #f5f7ff; }
+  .link-box ol { margin: 6px 0 4px 18px; padding: 0; }
+  .loy-panel { background: linear-gradient(160deg, #fff7ed 0%, #ffe8d1 100%); border-color: #f6c58f; }
+  .loy-panel .card-title { color: #9a4a00; }
+  .loy-panel .btn.primary { background: #ea7a1a; border-color: #ea7a1a; }
+  .loy-panel .tg input:checked + span { background: #ea7a1a; }
+  .wa-panel { background: linear-gradient(160deg, #ecfdf3 0%, #d9f7e6 100%); border-color: #9be2b8; }
+  .wa-panel .card-title { color: #0b6b3a; }
+  .crm-tabs { align-self: flex-start; }
+  .crm-tabs button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 16px; font-size: 14px; }
+  .crm-tabs button svg { width: 16px; height: 16px; }
+  .qa { padding: 10px 0; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+  .qa-q, .qa-a { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; }
+  .qa-q { font-weight: 600; }
+  .qa-q .tiny { margin-left: auto; font-weight: 400; }
+  .qa-a { color: var(--ink-2); }
+  .qa svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+  .wa-tips { margin: 0 0 0 18px; padding: 0; display: grid; gap: 4px; }
+  .wa-foot { text-align: center; margin-top: -6px; }
+  .loy-set { width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #f7f9fc; }
+  .poster { border: 2px dashed #b9c8ff; border-radius: 16px; padding: 18px; background: #fff; width: 100%; max-width: 360px; }
+  .poster-h { font-size: 22px; font-weight: 700; color: #0b1b33; }
+  .poster-s { font-size: 13px; color: var(--ink-2); margin: 6px 0 12px; }
+  .poster-qr { display: grid; place-items: center; min-height: 180px; }
+  .poster-wait { padding: 24px 14px; font-size: 13px; color: var(--ink-2); background: #fff8e6; border: 1px solid #f3d38a; border-radius: 10px; }
+  .poster-wait b:first-child { display: block; font-size: 15px; color: #8a4b00; margin-bottom: 6px; }
+  .poster-f { font-size: 12px; color: var(--ink-3); margin-top: 10px; }
+  .loy { display: inline-flex; gap: 3px; vertical-align: middle; }
+  .loy i { width: 12px; height: 12px; border-radius: 50%; background: #e2e8f0; display: inline-block; }
+  .loy i.on { background: #13a06f; }
+  .crm-table td { vertical-align: middle; }
+  .donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin: 6px 0; }
+  .legend.col { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  .cols-chart { display: flex; align-items: flex-end; gap: 10px; padding: 8px 2px 0; min-height: 170px; overflow-x: auto; }
+  .cc { flex: 1; min-width: 64px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .cc-bar { width: 70%; border-radius: 6px 6px 2px 2px; }
+  .cc-v { font-size: 11.5px; font-weight: 600; }
+  .cc-l { font-size: 11px; color: var(--ink-3); text-align: center; line-height: 1.2; }
+  .line-svg { width: 100%; height: 170px; }
+  .table.mini td, .table.mini th { padding: 7px 10px; }
+  .table.mini i.dot { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; }
+  .pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin: 8px 0 6px; }
+  .pick { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; font: inherit; text-align: center; transition: border-color 150ms ease, transform 150ms ease; }
+  .pick:hover { border-color: #b9c8ff; transform: translateY(-1px); }
+  .pick.on { border-color: #2f45d9; background: #f5f7ff; box-shadow: 0 0 0 3px rgba(47, 69, 217, 0.12); }
+  .pick svg { width: 100%; height: 56px; }
+  .pick b { font-size: 13px; }
+  .pick span { font-size: 11px; color: var(--ink-3); line-height: 1.25; }
+  .style-switch { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; margin: 8px 0 2px; }
+  .style-switch button { border: 0; background: transparent; padding: 4px 10px; border-radius: 6px; font: inherit; font-size: 12px; color: var(--ink-3); cursor: pointer; }
+  .style-switch button.on { background: #2f45d9; color: #fff; }
+  .draft-wrap { position: relative; flex: 1; display: flex; min-width: 0; }
+  .draft-wrap .input { flex: 1; padding-right: 40px; }
+  .draft-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; border: 0; border-radius: 50%; background: #eef2ff; color: #2f45d9; display: grid; place-items: center; cursor: pointer; }
+  .draft-clear svg { width: 16px; height: 16px; }
+  .input.from-voice { border-color: #2f45d9; box-shadow: 0 0 0 3px rgba(47, 69, 217, 0.15); background: #f7f9ff; }
+  @media (min-width: 900px) {
+    body:not(.voxa-docked) .voxa-panel { display: grid; grid-template-columns: 280px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; }
+    body:not(.voxa-docked) .voxa-head { grid-column: 1 / -1; }
+    body:not(.voxa-docked) #chatList { display: flex !important; grid-column: 1; grid-row: 2 / 5; border-right: 1px solid var(--line); background: #f7f9fc; }
+    body:not(.voxa-docked) #chat, body:not(.voxa-docked) #quickQs, body:not(.voxa-docked) .voxa-composer { grid-column: 2; }
+    body:not(.voxa-docked) #chat { display: flex !important; }
+    body:not(.voxa-docked) #chatsBtn { display: none; }
+  }
+  .chat-list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 2px 6px; }
+  .chat-list { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  .chat-row { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-md); cursor: pointer; background: #fff; }
+  .chat-row:hover { border-color: #b9c8ff; }
+  .chat-row.on { border-color: #2f45d9; background: #eef2ff; }
+  .save-note { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; color: #2f45d9; font: inherit; font-size: 12px; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+  .save-note:hover:not(:disabled) { background: #eef2ff; }
+  .save-note:disabled { color: var(--ok); cursor: default; }
+  .save-note svg { width: 14px; height: 14px; }
+  .play-btn { margin-left: auto; }
+  .play-btn + .save-note { margin-left: 0; }
+  .play-btn.on { background: #2f45d9; color: #fff; }
+  .voxa-chat .src { display: flex; align-items: center; gap: 8px; }
+  .recent5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; padding: 12px 16px 16px; }
+  .rp { border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px; display: flex; flex-direction: column; gap: 6px; background: var(--surface); }
+  .rp.pending { border-color: var(--warn-line); background: var(--warn-bg); }
+  .rp .amt.lg { font-size: 20px; }
+  @media (max-width: 1100px) { .recent5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .recent5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .pay-scroll { max-height: 440px; overflow: auto; border-radius: 0 0 14px 14px; margin-top: 8px; }
+  #allPayments tr.stuck td { background: var(--warn-bg); }
+  .src-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .src { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-lg); }
+  .src p { margin-top: 2px; }
+  .add-cost { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 10px; }
+  .add-cost .input { min-height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); font: inherit; color: var(--ink); }
+  @media (max-width: 640px) { .src-grid, .add-cost { grid-template-columns: 1fr; } }
+  body.voxa-docked [data-pane="voxa"] { display: block !important; position: fixed; right: 20px; top: 72px; bottom: 20px; width: min(600px, calc(100vw - 40px)); z-index: 60; animation: dock-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  body.voxa-docked [data-pane="voxa"] .voxa-panel { height: 100%; min-height: 0; background: #fff; border: 2px solid #2f45d9; box-shadow: 0 30px 80px -20px rgba(20, 30, 90, 0.6); }
+  body.voxa-docked [data-pane="voxa"] .voxa-panel > .panel-head, body.voxa-docked [data-pane="voxa"] .voxa-head { background: linear-gradient(90deg, #2f45d9, #4f63ff); color: #fff; }
+  body.voxa-docked [data-pane="voxa"] .voxa-head * { color: #fff !important; }
+  /* the dimmed page is a huge shadow around the panel, so it can never cover the panel itself */
+  body.voxa-docked [data-pane="voxa"] { box-shadow: 0 0 0 200vmax rgba(11, 27, 51, 0.45); border-radius: var(--r-lg); }
+  @keyframes dock-in { from { transform: translateY(12px); opacity: 0; } }
+  body.voxa-docked .voxa-close { display: grid; }
+  body.voxa-docked .voxa-chat .msg { max-width: 92%; font-size: 15px; }
+  @media (max-width: 640px) { body.voxa-docked [data-pane="voxa"] { right: 0; left: 0; top: 60px; bottom: 0; width: 100%; } }
+
+  .kpi.flat { box-shadow: none; background: var(--surface-2); padding: 14px 16px; }
+  .chk-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chk-pills span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: var(--ok-bg); color: var(--ok); font-size: 13.5px; font-weight: 500; }
+  .chk-pills svg.lucide { width: 15px; height: 15px; }
+  .card-title { font-size: 18px; font-weight: 600; letter-spacing: -0.015em; color: var(--ink); text-transform: none; }
+  .chart.anim .bar { transform-box: fill-box; transform-origin: bottom; animation: grow 420ms var(--ease-out) both; }
+  @keyframes grow { from { transform: scaleY(0.05); opacity: 0.4; } to { transform: none; opacity: 1; } }
+  .kpi .v, .hero-kpi .v { transition: color 200ms ease; }
+  .kpis.flash .kpi, .hero-kpi.flash { animation: kflash 500ms var(--ease-out); }
+  @keyframes kflash { from { box-shadow: 0 0 0 3px rgba(106, 92, 246, 0.35); } }
+  .offers { display: grid; gap: 16px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .offers { grid-template-columns: repeat(3, 1fr); } }
+  .offer-card { display: flex; flex-direction: column; gap: 8px; padding: 18px; text-align: left; background: #fff; border: 2px solid transparent; border-radius: var(--r-lg); box-shadow: var(--shadow); transition: border-color 150ms ease, transform 140ms var(--ease-out); }
+  .offer-card:active { transform: scale(0.98); }
+  .offer-card.on { border-color: var(--violet); background: #faf9ff; }
+  .offer-card.on svg.lucide { color: var(--violet); }
+  @media (hover: hover) and (pointer: fine) { .offer-card:not(.on):hover { border-color: #d9d5fd; } }
+  .plan-facts { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 760px) { .plan-facts { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1200px) { .plan-facts { grid-template-columns: repeat(3, 1fr); } }
+  .fact { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: var(--r-md); background: var(--surface-2); font-size: 14px; color: var(--ink-2); }
+  .fact svg.lucide { color: var(--violet); margin-top: 2px; }
+  .fact b { color: var(--ink); font-weight: 600; }
+  .fact span { display: block; font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+  .fact.ok { background: var(--ok-bg); } .fact.ok svg.lucide { color: var(--ok); }
+  .fact.warn { background: var(--warn-bg); } .fact.warn svg.lucide { color: var(--warn); }
+</style>
+</head>
+<body data-role="merchant">
+<header class="shell" data-lang-toggle="1" data-title="Murugan and Co" data-sub="Voxa Pay for Business" data-user="Murugan" data-user-role="Shop owner · Deepak"></header>
+
+<main class="page">
+  <div class="page-head">
+    <div><h1 id="title">Dashboard overview</h1><div class="crumb" id="crumb">Home / Murugan and Co / Dashboard</div></div>
+    <div class="page-actions">
+      <select class="select" id="period" aria-label="Period"></select>
+      <button class="btn primary" id="download"><i data-lucide="download"></i>Download report</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <section data-pane="dashboard" class="stack" style="gap:20px">
+    <div class="kpis with-hero" id="kpis"></div>
+    <div id="attention" class="stack" style="gap:12px"></div>
+
+    <div class="dash">
+      <div class="stack" style="gap:20px">
+        <div class="panel">
+          <div class="panel-head"><h2>Sales overview</h2>
+            <div class="legend"><span><i style="background:var(--c-cyan)"></i>This period</span><span id="lgPrev"><i style="background:var(--c-violet)"></i>Period before</span><span><i style="background:var(--c-coral);height:3px;border-radius:2px;vertical-align:3px"></i>Average bill</span></div>
+          </div>
+          <div class="panel-sub" id="ovSub">Daily sales, compared with the period before</div>
+          <div class="panel-body chart" id="overview"></div>
+        </div>
+        <div class="pair">
+          <div class="panel">
+            <div class="panel-head"><h2>Sales by time of day</h2></div>
+            <div class="panel-sub">Share of an average day's sales</div>
+            <div class="panel-body donut-row" id="donutTime"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h2>Today's payments</h2></div>
+            <div class="panel-sub">Received, stuck and refunded, by amount</div>
+            <div class="panel-body donut-row" id="donutToday"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="overflow:hidden">
+        <div class="panel-head" style="padding-bottom:10px"><h2 id="tblTitle">Daily sales</h2><span class="hint" id="tblHint"></span></div>
+        <div class="table-wrap"><table class="table" id="dayTable"></table></div>
+      </div>
+
+      <div class="panel span2">
+        <div class="panel-head"><h2>Most recent earnings</h2>
+          <div class="pills" id="earnPills"><button data-p="today" class="on">Today</button><button data-p="week">Week</button><button data-p="month">Month</button></div>
+        </div>
+        <div class="panel-sub">What reached you, what is stuck between banks and what went back</div>
+        <div class="panel-body earn" id="earn"></div>
+        <hr class="divider">
+        <div class="pair" style="gap:0">
+          <div><div class="panel-head" style="padding-top:14px"><h2>Recent payments</h2></div><div class="rows" id="payments" style="margin-top:6px"></div></div>
+          <div style="border-left:1px solid var(--line)"><div class="panel-head" style="padding-top:14px"><h2>Voxa updates</h2><span class="hint">in your language</span></div><div class="rows" id="notes" style="margin-top:6px"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAYMENTS -->
+  <section data-pane="payments" class="stack hidden" style="gap:20px">
+    <div class="kpis four" id="payKpis"></div>
+    <div id="attention2" class="stack" style="gap:12px"></div>
+    <div class="panel">
+      <div class="panel-head"><h2>Recent payments</h2><span class="hint">The last 5 payments</span></div>
+      <div class="recent5" id="recent5"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>All payments today</h2><span class="tag" id="allCount"></span></div>
+      <div class="panel-sub">Every payment that came in today, newest first</div>
+      <div class="table-wrap pay-scroll"><table class="table" id="allPayments"></table></div>
+    </div>
+  </section>
+
+  <!-- INSIGHTS -->
+  <section data-pane="insights" class="stack hidden" style="gap:20px">
+    <div class="kpis four" id="insKpis"></div>
+    <div class="panel">
+      <div class="panel-body stack" style="gap:16px">
+        <div class="row between top wrap">
+          <div class="row top"><div class="dot-ico info"><i data-lucide="chart-column"></i></div>
+            <div><h2 class="card-title" id="insTitle">Sales</h2><p class="ink-2" id="insSub" style="margin-top:4px;max-width:64ch"></p></div></div>
+          <div class="legend" id="insLegend"></div>
+        </div>
+        <div style="overflow-x:auto"><div class="chart" id="insChart" style="min-width:760px"></div></div>
+      </div>
+    </div>
+    <div class="panel"><div class="panel-body stack" id="insightCard"></div></div>
+  </section>
+
+  <!-- LOAN ANALYSIS -->
+  <section data-pane="loan" class="stack hidden" style="gap:20px">
+    <div><div class="seg loan-tabs" id="loanTabs"><button data-v="mine" class="on">My loan</button><button data-v="calc">Loan estimate calculator</button></div></div>
+    <div id="mineView" class="stack" style="gap:20px"></div>
+    <div id="calcView" class="stack hidden" style="gap:20px">
+    <div id="loanActive" class="hidden"></div>
+    <div class="estimate-banner" id="estBanner"></div>
+    <div class="panel" id="loanInputs">
+      <div class="panel-body loan-inputs">
+        <div class="li"><div class="li-l" data-t="need">How much do you need?</div><div class="li-v" id="vAmount"></div><input type="range" id="inAmount" min="50000" max="1000000" step="10000" value="150000"></div>
+        <div class="li"><div class="li-l" data-t="months">For how many months?</div><div class="pills" id="inMonths"><button data-m="6">6</button><button data-m="12" class="on">12</button><button data-m="18">18</button><button data-m="24">24</button><button data-m="36">36</button></div></div>
+        <div class="li"><div class="li-l" data-t="rate">Interest rate (estimate)</div><div class="li-v" id="vRate"></div><input type="range" id="inRate" min="15" max="32" step="0.5"><div class="tiny muted" id="rateHint"></div></div>
+      </div>
+    </div>
+    <div class="kpis five" id="loanKpis"></div>
+    <div class="loan-grid">
+      <div class="panel">
+        <div class="panel-body stack" style="gap:12px">
+          <div><h2 class="card-title" data-t="salesTitle">Your sales: last year, this year, loan year</h2><p class="ink-2 small" data-t="salesSub" style="margin-top:4px">Voxa checks your past sales before you borrow. The loan year is an estimate.</p></div>
+          <div class="legend" id="slLegend"></div>
+          <div class="chart" id="salesLines"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-body stack" style="gap:12px">
+          <div class="row between top wrap"><div><h2 class="card-title" data-t="barsTitle">Every month: your sales and your loan payment</h2><p class="ink-2 small" data-t="barsSub" style="margin-top:4px">The whole bar is the month's sales. The top part goes to the loan.</p></div>
+            <div class="legend" id="lbLegend"></div></div>
+          <div style="overflow-x:auto"><div class="chart" id="loanBars" style="min-width:640px"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="loan-grid">
+      <div class="panel"><div class="panel-body stack" style="gap:12px"><h2 class="card-title" data-t="simpleTitle">In simple words</h2><div class="words" id="loanWords"></div></div></div>
+      <div class="panel"><div class="panel-body stack" style="gap:12px">
+        <h2 class="card-title" data-t="fasterTitle">Can I pay it off faster?</h2>
+        <div class="li"><div class="li-l" data-t="extra">Pay extra each month</div><div class="li-v" id="vExtra"></div><input type="range" id="inExtra" min="0" max="30000" step="1000" value="0"></div>
+        <div id="fasterResult"></div>
+        <div class="note-plain warn small" data-t="prepay">Partly up to you. Paying early saves interest, but some lenders charge a prepayment fee. Check your loan letter before paying extra.</div>
+      </div></div>
+    </div>
+    <div class="panel"><div class="panel-body row wrap between">
+      <div class="row wrap" id="loanBtns"></div>
+      <div class="tiny muted" id="loanSource"></div>
+    </div></div>
+    </div>
+    <div class="panel" id="settlePanel">
+      <div class="panel-head"><h2>Settlements</h2><span class="hint">nightly payout to your bank</span></div>
+      <div class="rows" id="settlements" style="margin-top:6px"></div>
+    </div>
+  </section>
+
+  <!-- ASK VOXA -->
+  <section data-pane="voxa" class="hidden">
+    <div class="panel voxa-panel">
+      <div class="voxa-head">
+        <div class="dot-ico ai" style="width:42px;height:42px"><i data-lucide="bot"></i></div>
+        <div class="grow"><div class="strong" style="font-size:17px">Voxa</div><div class="tiny muted" id="aiMode"></div></div>
+        <button class="btn sm quiet" id="chatsBtn" title="Past chats"><i data-lucide="history"></i><span>Chats</span></button>
+        <button class="btn sm quiet" id="newChat" title="Start a new chat; this one is kept"><i data-lucide="square-pen"></i><span>New</span></button>
+        <button class="btn icon quiet voxa-close" id="voxaClose" aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="chat-list hidden" id="chatList"></div>
+      <div class="chat voxa-chat" id="chat" aria-live="polite" data-noi18n></div>
+      <div class="chips" id="quickQs" style="padding:10px 18px 0"></div>
+      <div class="composer voxa-composer">
+        <button class="mic big" id="mic" aria-label="Speak to Voxa"><i data-lucide="mic"></i></button>
+        <label class="btn icon cam" title="Take a photo of a bill" aria-label="Take a photo of a bill"><i data-lucide="camera"></i><input type="file" id="billFile" accept="image/*" capture="environment" hidden></label>
+        <label class="btn upload-btn" title="Upload a bill photo from your phone or computer"><i data-lucide="paperclip"></i><span>Upload</span><input type="file" accept="image/*" hidden data-billpick></label>
+        <div class="draft-wrap"><input class="input" id="chatInput" placeholder="Speak or type in Tamil, Hindi or English…"><button class="draft-clear hidden" id="clearDraft" type="button" aria-label="Clear the text" title="Clear"><i data-lucide="x"></i></button></div>
+        <button class="btn primary icon" id="send" aria-label="Send"><i data-lucide="arrow-up"></i></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- COSTS & PROFIT (managed by Voxa) -->
+  <section data-pane="costs" class="stack hidden" style="gap:20px" id="costsPane"></section>
+
+  <!-- VOXA NOTES -->
+  <section data-pane="notes" class="stack hidden" style="gap:20px" id="notesPane"></section>
+
+  <!-- WHATSAPP: Murugan chats with Voxa from his phone; his updates -->
+  <section data-pane="whatsapp" class="stack hidden" style="gap:20px" id="waPane"></section>
+
+  <!-- CUSTOMERS: WhatsApp list, loyalty card, Kanakku -->
+  <section data-pane="customers" class="stack hidden" style="gap:20px" id="customersPane"></section>
+</main>
+
+<button class="fab" id="fab"><i data-lucide="mic"></i>Ask Voxa</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="/vendor/lucide.js"></script>
+<script src="/js/common.js"></script>
+<script src="/js/tamil.js"></script>
+<script>
+const { inr, esc, $, $$, i, icons, api, subscribe, badge, route, ago, time, toast, speak, listen } = V;
+let S = null, pane = 'dashboard', soundOn = true, seen = null, busy = false, period = '7', earnP = 'today';
+let loanIn = { amount: 150000, months: 12, extra: 0, rate: null }, lp = null, prof = null, loanView = 'mine';
+
+const PANES = { whatsapp: 'WhatsApp', customers: 'Customers & Kanakku', dashboard: 'Dashboard overview', payments: 'Payments', insights: 'Sales insights', loan: 'Loan', voxa: 'Ask Voxa', costs: 'Costs & profit', notes: 'Voxa notes' };
+V.sections = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+  { id: 'payments', label: 'Payments', icon: 'arrow-left-right', count: 0 },
+  { id: 'insights', label: 'Sales insights', icon: 'lightbulb' },
+  { id: 'loan', label: 'Loan', icon: 'hand-coins' },
+  { id: 'costs', label: 'Costs & profit', icon: 'piggy-bank' },
+  { id: 'notes', label: 'Voxa notes', icon: 'notebook-pen', count: 0 },
+  { id: 'customers', label: 'Customers & Kanakku', icon: 'users', count: 0 },
+  { id: 'whatsapp', label: 'WhatsApp', icon: 'message-circle' },
+  { id: 'voxa', label: 'Ask Voxa', icon: 'mic' },
+];
+V.onSection = (id) => {
+  pane = id;
+  document.body.classList.remove('voxa-docked');
+  $$('[data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== id));
+  $('#title').textContent = PANES[id];
+  $('#crumb').textContent = `Home / Murugan and Co / ${PANES[id]}`;
+  $('#period').classList.toggle('hidden', ['payments', 'loan', 'costs', 'notes', 'voxa', 'customers', 'whatsapp'].includes(id));
+  if (id === 'loan') { setLoanView('mine'); loadProfile(); loadPlan(); }
+  if (id === 'notes' && S) renderNotes();
+  if (id === 'customers' && S) renderCustomers();
+  if (id === 'whatsapp' && S) renderWhatsapp();
+  if (id === 'costs' && S) renderCosts();
+  if (id === 'voxa') { renderChat(); setTimeout(() => $('#chatInput').focus({ preventScroll: true }), 50); }
+  $('#fab').classList.toggle('hidden', id === 'voxa');
+  window.scrollTo({ top: 0 });
+};
+V.onBell = () => { V.markSection('payments'); V.onSection('payments'); };
+
+const QUICK = {
+  en: ['How were sales this week?', 'What happened to my last payment?', 'Explain my loan simply', 'Show my profit'],
+  ta: ['இந்த வார விற்பனை எப்படி?', 'என் கடைசி பணம் என்ன ஆனது?', 'என் கடனை எளிமையாக விளக்குங்கள்', 'என் லாபம் காட்டு'],
+  hi: ['इस हफ्ते बिक्री कैसी रही?', 'मेरे आखिरी पेमेंट का क्या हुआ?', 'मेरा लोन आसान शब्दों में समझाइए', 'मेरा मुनाफा दिखाओ'],
+};
+const QUICK_BY_PAGE = {
+  payments: { en: ['What happened to my last payment?', 'Any stuck payments today?', 'Which regular customers stopped coming?'], ta: ['என் கடைசி பணம் என்ன ஆனது?', 'இன்று ஏதாவது பணம் சிக்கியதா?', 'எந்த வழக்கமான வாடிக்கையாளர்கள் வரவில்லை?'], hi: ['मेरे आखिरी पेमेंट का क्या हुआ?', 'आज कोई पेमेंट रुका है?', 'कौन से रेगुलर ग्राहक आना बंद हुए?'] },
+  insights: { en: ['How were sales this week?', 'Any advice for my shop?', 'What about Pongal?'], ta: ['இந்த வார விற்பனை எப்படி?', 'என் கடைக்கு ஏதாவது ஆலோசனை?', 'பொங்கலுக்கு என்ன செய்யலாம்?'], hi: ['इस हफ्ते बिक्री कैसी रही?', 'मेरी दुकान के लिए कोई सलाह?', 'पोंगल के लिए क्या करूँ?'] },
+  loan: { en: ['Am I eligible for a loan?', 'Explain my loan simply'], ta: ['எனக்கு கடன் கிடைக்குமா?', 'என் கடனை எளிமையாக விளக்குங்கள்'], hi: ['क्या मुझे लोन मिलेगा?', 'मेरा लोन आसान शब्दों में समझाइए'] },
+  costs: { en: ['Show my profit', 'This month I paid 20k: rent 6k, electricity 4k, salary 8k'], ta: ['என் லாபம் காட்டு', 'இந்த மாதம் 20 ஆயிரம் செலவு: வாடகை 6 ஆயிரம், கரண்ட் 4 ஆயிரம், சம்பளம் 8 ஆயிரம்'], hi: ['मेरा मुनाफा दिखाओ', 'इस महीने 20 हज़ार खर्च: किराया 6 हज़ार, बिजली 4 हज़ार, वेतन 8 हज़ार'] },
+  notes: { en: ['Remember to pay the milk supplier on Friday'], ta: ['வெள்ளிக்கிழமை பால் சப்ளையருக்கு பணம் கொடுக்க நினைவில் வை'], hi: ['याद रखो शुक्रवार को दूध वाले को पैसे देने हैं'] },
+};
+// Suggestions come from the shop's live data: a stuck payment, money owed, missing costs, the loan.
+function quickFor(lang) {
+  const L = ['en', 'ta', 'hi'].includes(lang) ? lang : 'en';
+  const T = (en, ta, hi) => ({ en, ta, hi })[L];
+  const out = [];
+  if (!S) return QUICK[L];
+  const pays = S.txns.filter((t) => t.kind === 'payment');
+  const stuck = pays.find((t) => t.status === 'pending');
+  if (stuck) out.push(T(`What happened to ${stuck.fromName}'s ${inr(stuck.amount)}?`, `${stuck.fromName} அனுப்பிய ${inr(stuck.amount)} என்ன ஆனது?`, `${stuck.fromName} के ${inr(stuck.amount)} का क्या हुआ?`));
+  const owe = pays.find((t) => t.resolvedHow === 'late_credit' && (t.cashTaken || t.paidAgainBy) && !t.refunded);
+  if (owe) out.push(T(`Do I owe ${owe.fromName} money?`, `${owe.fromName}க்கு நான் பணம் தர வேண்டுமா?`, `क्या मुझे ${owe.fromName} को पैसे लौटाने हैं?`));
+  const back = pays.find((t) => t.resolvedHow === 'reversed' && !t.paidAgainBy && !t.cashTaken && !t.paidBackBy);
+  if (back) out.push(T(`Has ${back.fromName} paid again?`, `${back.fromName} மீண்டும் செலுத்தினாரா?`, `क्या ${back.fromName} ने फिर से पैसे दिए?`));
+  const month = new Date().toISOString().slice(0, 7);
+  const costs = S.expenses.filter((e) => e.month === month);
+  if (pane === 'costs' || pane === 'notes' || !costs.length) out.push(costs.length ? T('Show my profit', 'என் லாபம் காட்டு', 'मेरा मुनाफा दिखाओ') : T('This month rent 6k, electricity 4k', 'இந்த மாதம் வாடகை 6 ஆயிரம், கரண்ட் 4 ஆயிரம்', 'इस महीने किराया 6 हज़ार, बिजली 4 हज़ार'));
+  if (pane === 'loan' || out.length < 3) out.push(S.loan.status === 'active' ? T('How much of my loan is left?', 'என் கடனில் இன்னும் எவ்வளவு பாக்கி?', 'मेरा कितना लोन बाकी है?') : T('Can I get a loan of 1 lakh?', 'எனக்கு 1 லட்சம் கடன் கிடைக்குமா?', 'क्या मुझे 1 लाख का लोन मिल सकता है?'));
+  if (out.length < 4) out.push(T('How were sales this week?', 'இந்த வார விற்பனை எப்படி?', 'इस हफ्ते बिक्री कैसी रही?'));
+  if (out.length < 4 && (pane === 'insights' || pane === 'dashboard')) out.push(T('Any advice for my shop?', 'என் கடைக்கு ஏதாவது ஆலோசனை?', 'मेरी दुकान के लिए कोई सलाह?'));
+  return [...new Set(out)].slice(0, 4);
+}
+
+// ---------- drawer ----------
+function openVoxa() {
+  if (pane === 'voxa') return;
+  document.body.classList.add('voxa-docked');
+  $('#fab').classList.add('hidden');
+  renderChat();
+  setTimeout(() => $('#chatInput').focus({ preventScroll: true }), 60);
+}
+function closeVoxa() { document.body.classList.remove('voxa-docked'); $('#fab').classList.toggle('hidden', pane === 'voxa'); }
+$('#fab').onclick = openVoxa;
+// tapping the dimmed page around the panel closes it
+document.addEventListener('mousedown', (e) => { if (document.body.classList.contains('voxa-docked') && !e.target.closest('[data-pane="voxa"], #fab, .toast, .lang-top')) closeVoxa(); });
+$('#voxaClose').onclick = closeVoxa;
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeVoxa(); });
+
+// ---------- header controls ----------
+// Voxa reads every answer aloud; each answer has Play, and Stop while it is talking.
+document.addEventListener('voxa-speak', () => { if (S) renderChat(); });
+$('#chat').addEventListener('click', (e) => {
+  const p = e.target.closest('[data-play]');
+  if (!p) return;
+  const m = S.chat[Number(p.dataset.play)];
+  if (!m) return;
+  const key = 'm' + m.at;
+  if (V.speakingKey() === key) V.stopSpeaking(); else speak(m.text, m.lang || S.merchant.lang, key);
+});
+$('#period').onchange = (e) => { period = e.target.value; render(); V.icons(); const h = document.querySelector('.hero-kpi'); if (h) { h.classList.remove('flash'); void h.offsetWidth; h.classList.add('flash'); } };
+$('#earnPills').addEventListener('click', (e) => { const b = e.target.closest('[data-p]'); if (!b) return; earnP = b.dataset.p; $$('#earnPills button').forEach((x) => x.classList.toggle('on', x === b)); renderEarn(); });
+$('#download').onclick = () => {
+  const rows = [['Murugan and Co · sales report (demo data)'], [], ['Date', 'Bills', 'Sales (₹)']];
+  S.history.days.forEach((d) => rows.push([d.date, d.count, d.total]));
+  rows.push([], ['Live payments today'], ['Time', 'Payment ID', 'UTR', 'From', 'Amount (₹)', 'Status']);
+  S.txns.forEach((t) => rows.push([time(t.createdAt), t.id, t.utr, t.fromName, t.amount, t.status]));
+  V.download('murugan-stores-sales.csv', rows);
+};
+
+// ---------- chat ----------
+// ---------- Voxa skills ----------
+let SKILLS = [];
+fetch('/api/skills').then((r) => r.json()).then((x) => { SKILLS = x; if (pane === 'voxa') renderChat(); });
+function skillsGrid(compact) {
+  if (!SKILLS.length || !S) return '';
+  const lang = S.merchant.lang;
+  return `<div class="skills-grid ${compact ? 'compact' : ''}">${SKILLS.map((k) => `
+    <div class="skill"><div class="row top" style="gap:10px"><div class="dot-ico ai">${i(k.icon)}</div><div class="grow"><b>${esc(k.name)}</b>${compact ? '' : `<p>${esc(k.does)}</p><div class="tools">${k.tools.map((t) => `<code>${esc(t)}</code>`).join('')}</div>`}</div></div>
+    ${k.id === 'bills' ? `<button class="chip" data-bill="stock">${i('camera')} Try a sample bill</button>` : k.id === 'voice' ? `<button class="chip" data-act="micNow">${i('mic')} Tap to speak</button>` : `<button class="chip" data-q="${esc(k.try[lang] || k.try.en)}">${esc(k.try[lang] || k.try.en)}</button>`}</div>`).join('')}</div>`;
+}
+$('#chat').addEventListener('click', (e) => { const b = e.target.closest('.voxa-empty [data-q]'); if (b) ask(b.dataset.q); });
+
+// ---------- Bill reader: a phone photo, or one of three sample bills drawn here ----------
+const BILLS = {
+  eb: ['ELECTRICITY BILL (SAMPLE)', 'Consumer: Murugan and Co, Mylapore', 'Billing period: Oct 2026', 'Units used: 520', '', 'Energy charges          ₹3,640', 'Fixed charges              ₹420', 'Tax                        ₹120', '', 'AMOUNT DUE              ₹4,180', 'Pay by: 20 Nov 2026'],
+  stock: ['WHOLESALE INVOICE (SAMPLE)', 'To: Murugan and Co, Mylapore', 'Date: 12 Nov 2026', '', 'Rice 25 kg x 10       ₹18,500', 'Sunflower oil 1 L x 60  ₹9,000', 'Toor dal 1 kg x 50      ₹6,750', 'Sugar 1 kg x 100        ₹4,400', '', 'TOTAL                  ₹38,650', 'Paid: cash'],
+  rent: ['RENT RECEIPT (SAMPLE)', 'Received from: Murugan and Co', 'Shop No. 4, Mylapore', '', 'Rent for November 2026', '', 'AMOUNT RECEIVED         ₹6,000', '', 'Date: 5 Nov 2026', 'Signed: Owner'],
+};
+function drawBill(kind) {
+  const c = document.createElement('canvas');
+  c.width = 620; c.height = 760;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fbfaf6'; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = '#1f2937';
+  BILLS[kind].forEach((line, k) => {
+    g.font = k === 0 ? 'bold 30px Geist, sans-serif' : /TOTAL|AMOUNT/.test(line) ? 'bold 26px "Geist Mono", monospace' : '24px "Geist Mono", monospace';
+    g.fillText(line, 40, 80 + k * 56);
+  });
+  g.strokeStyle = '#d1d5db'; g.setLineDash([8, 6]); g.strokeRect(16, 16, c.width - 32, c.height - 32);
+  return c;
+}
+function toJpeg(canvasOrImg, max) {
+  const w0 = canvasOrImg.width, h0 = canvasOrImg.height, k = Math.min(1, max / Math.max(w0, h0));
+  const c = document.createElement('canvas');
+  c.width = Math.round(w0 * k); c.height = Math.round(h0 * k);
+  c.getContext('2d').drawImage(canvasOrImg, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.85);
+}
+// A free check that runs on the phone, before any photo is sent to the AI:
+// a bill is mostly light paper with dark print, few strong colours and little skin tone.
+// Photos of people, scenes or anything colourful are stopped here and cost nothing.
+function looksLikeBill(source) {
+  const W = 96, H = Math.max(1, Math.round((96 * (source.naturalHeight || source.height)) / (source.naturalWidth || source.width)));
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(source, 0, 0, W, H);
+  const d = g.getImageData(0, 0, W, H).data;
+  let paper = 0, ink = 0, skin = 0, vivid = 0; const n = W * H;
+  for (let k = 0; k < d.length; k += 4) {
+    const r = d[k], gg = d[k + 1], b = d[k + 2];
+    const y = 0.299 * r + 0.587 * gg + 0.114 * b, mx = Math.max(r, gg, b), mn = Math.min(r, gg, b), sat = mx ? (mx - mn) / mx : 0;
+    const cb = 128 - 0.169 * r - 0.331 * gg + 0.5 * b, cr = 128 + 0.5 * r - 0.419 * gg - 0.081 * b;
+    if (y > 150 && sat < 0.22) paper++;
+    if (y < 100) ink++;
+    if (y > 70 && cr > 138 && cr < 175 && cb > 80 && cb < 125 && sat > 0.15) skin++;
+    if (sat > 0.5 && y > 60) vivid++;
+  }
+  // printed or written text makes many small sharp light/dark edges; faces and scenes make few
+  const EW = 256, EH = Math.max(1, Math.round((EW * H) / W));
+  const c2 = document.createElement('canvas'); c2.width = EW; c2.height = EH;
+  const g2 = c2.getContext('2d', { willReadFrequently: true }); g2.drawImage(source, 0, 0, EW, EH);
+  const e2 = g2.getImageData(0, 0, EW, EH).data; let edges = 0;
+  const lum = (k) => 0.299 * e2[k] + 0.587 * e2[k + 1] + 0.114 * e2[k + 2];
+  for (let yy = 0; yy < EH; yy++) for (let xx = 0; xx < EW - 1; xx++) { const k = (yy * EW + xx) * 4; if (Math.abs(lum(k) - lum(k + 4)) > 60) edges++; }
+  const p = { paper: paper / n, ink: ink / n, skin: skin / n, vivid: vivid / n, text: edges / (EW * EH) };
+  // a hand or a wooden table around the bill is fine, as long as most of the photo is white paper
+  // skin-like colour (a face, but also a wooden counter) only counts when there is little print in the photo
+  const person = p.text < 0.025 && (p.skin >= 0.35 || (p.skin >= 0.12 && p.paper < 0.55));
+  // clearly printed text wins: whatever is around the receipt (wood, cloth, a hand) is fine
+  const strongText = p.text >= 0.025;
+  // thin print on a long receipt blurs away at the small size used for ink, so strong text alone is enough
+  const ok = p.paper >= 0.25 && p.text >= 0.005 && (strongText || (p.ink >= 0.003 && p.ink <= 0.5 && !person && p.vivid < 0.25));
+  const reason = ok ? 'looks like a bill' : person ? 'looks like a person' : p.text < 0.005 && p.paper >= 0.25 ? 'no printed text found' : p.vivid >= 0.25 ? 'too colourful for a bill' : p.paper < 0.25 ? 'no white paper found' : 'no printed text found';
+  return { ok, reason, ...Object.fromEntries(Object.entries(p).map(([k, v]) => [k, Math.round(v * 1000) / 1000])) };
+}
+
+async function sendBill(source, sample) {
+  if (busy) return;
+  const check = sample ? { ok: true, reason: 'sample bill' } : looksLikeBill(source);
+  if (!check.ok) {
+    const say = { en: `That does not look like a bill (${check.reason}), so I did not send it. Please take a photo of a printed bill only.`, ta: 'இது பில் போல் தெரியவில்லை, அதனால் அனுப்பவில்லை. அச்சிட்ட பில்லின் படத்தை மட்டும் எடுங்கள்.', hi: 'यह बिल जैसा नहीं लगता, इसलिए नहीं भेजा। सिर्फ़ छपे बिल की फ़ोटो लें।' }[S.merchant.lang] || '';
+    toast(say);
+    if (soundOn) speak(say, S.merchant.lang);
+    return;
+  }
+  busy = true; renderChat();
+  try {
+    const image = toJpeg(source, 1280), thumb = toJpeg(source, 160);
+    const r = await api('/api/merchant/bill', { image, mediaType: 'image/jpeg', sample, thumb, check, lang: S.merchant.lang });
+    speak(r.reply, S.merchant.lang, 'bill');
+  } catch (e) {} finally { busy = false; renderChat(); }
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-bill]'); if (b) { if (pane !== 'voxa') openVoxa(); sendBill(drawBill(b.dataset.bill), b.dataset.bill); } });
+document.addEventListener('change', (e) => {
+  if (!e.target.matches('[data-billpick]')) return;
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const img = new Image();
+  img.onload = () => { openVoxa(); sendBill(img, null); URL.revokeObjectURL(img.src); };
+  img.src = URL.createObjectURL(f);
+  e.target.value = '';
+});
+$('#billFile').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const img = new Image();
+  img.onload = () => { sendBill(img, null); URL.revokeObjectURL(img.src); };
+  img.src = URL.createObjectURL(f);
+  e.target.value = '';
+});
+
+// If he spoke, Voxa answers aloud, in the language he spoke (Sarvam tells us which one it heard).
+const HEARD = { 'ta-IN': 'ta', 'hi-IN': 'hi', 'en-IN': 'en' };
+async function ask(text, opts = {}) {
+  text = (text || '').trim();
+  if (!text || busy) return;
+  busy = true; $('#chatInput').value = ''; $('#send').disabled = true; renderChat();
+  const lang = HEARD[opts.heard] || S.merchant.lang;
+  try { const r = await api('/api/merchant/chat', { text, lang }); speak(r.reply, r.lang || lang, r.at ? 'm' + r.at : 'reply'); }
+  catch (e) {} finally { busy = false; $('#send').disabled = false; renderChat(); }
+}
+let voiceDraft = null; // set when the text in the box came from speech: then Voxa answers aloud, in that language
+const sendBox = () => { const d = voiceDraft; voiceDraft = null; $('#chatInput').classList.remove('from-voice'); $('#clearDraft').classList.add('hidden'); ask($('#chatInput').value, d ? { voice: true, heard: d.heard } : {}); };
+$('#send').onclick = sendBox;
+$('#chatInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendBox(); });
+$('#chatInput').addEventListener('input', (e) => { if (!e.target.value) { voiceDraft = null; e.target.classList.remove('from-voice'); $('#clearDraft').classList.add('hidden'); } });
+$('#clearDraft').onclick = () => { $('#chatInput').value = ''; voiceDraft = null; $('#chatInput').classList.remove('from-voice'); $('#clearDraft').classList.add('hidden'); $('#chatInput').focus(); };
+let showChats = false;
+$('#chatsBtn').onclick = () => { showChats = !showChats; renderChat(); };
+$('#newChat').onclick = () => { showChats = false; api('/api/merchant/chat/new', {}).then(() => toast('New chat. The last one is kept under Chats.')); };
+$('#chatList').addEventListener('click', (e) => {
+  if (e.target.closest('[data-newchat]')) { showChats = false; api('/api/merchant/chat/new', {}).then(() => toast('New chat started. The last one is kept.')); return; }
+  const del = e.target.closest('[data-delchat]');
+  if (del) { e.stopPropagation(); if (confirm('Delete this chat? It cannot be undone.')) api('/api/merchant/chat/delete', { id: del.dataset.delchat }); return; }
+  const op = e.target.closest('[data-openchat]');
+  if (op) { showChats = false; if (op.dataset.openchat !== 'current') api('/api/merchant/chat/open', { id: op.dataset.openchat }); else renderChat(); }
+});
+$('#chat').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-savenote]');
+  if (!b) return;
+  b.disabled = true;
+  api('/api/merchant/chat/savenote', { index: Number(b.dataset.savenote) }).then(() => toast('Saved to Voxa notes.')).catch(() => (b.disabled = false));
+});
+let rec = null;
+$('#mic').onclick = () => {
+  if (rec) { rec.stop(); return; }
+  $('#mic').classList.add('on');
+  rec = listen(S.merchant.lang, (t, heard) => {
+    // what he said is typed into the box first; he can fix it, send it, or clear it
+    const box = $('#chatInput');
+    box.value = (box.value ? box.value + ' ' : '') + t;
+    voiceDraft = { heard };
+    box.focus();
+    box.classList.add('from-voice');
+    $('#clearDraft').classList.remove('hidden');
+    toast({ en: 'Check the text, then press send.', ta: 'உரையைச் சரிபார்த்து, அனுப்பு அழுத்துங்கள்.', hi: 'टेक्स्ट जाँचें, फिर भेजें दबाएँ।' }[S.merchant.lang] || 'Check the text, then press send.');
+  }, () => { rec = null; $('#mic').classList.remove('on'); });
+};
+$('#quickQs').addEventListener('click', (e) => { const b = e.target.closest('[data-q]'); if (b) ask(b.dataset.q); });
+
+// ---------- actions ----------
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const { act, id } = b.dataset;
+  b.disabled = true;
+  try {
+    if (act === 'verify') await api('/api/merchant/verify', { txnId: id });
+    if (act === 'cash') await api('/api/merchant/cash', { txnId: id });
+    if (act === 'refund') await api('/api/merchant/refund', { txnId: id });
+    if (act === 'replay') { const n = S.notes.merchant.find((x) => x.id === id); if (n) speak(n.text, S.merchant.lang); }
+    if (act === 'offer') await api('/api/merchant/offer', { percent: 10, start: 14, end: 17 });
+    if (act === 'stopOffer') await api('/api/merchant/offer/stop', { id });
+    if (act === 'acceptLoan') { await api('/api/merchant/loan/accept', { amount: loanIn.amount, months: loanIn.months, ...(loanIn.rate ? { rate: loanIn.rate } : {}) }); loadPlan(); setLoanView('mine'); }
+    if (act === 'rateReset') { loanIn.rate = null; loadPlan(); }
+    if (act === 'micNow') $('#mic').click();
+    if (act === 'calcLimit') { loanIn.amount = Number(id); setLoanView('calc'); loadPlan(); }
+    if (act === 'delNote') await api('/api/merchant/notes/remove', { id });
+    if (act === 'explainLoan') { openVoxa(); await ask((QUICK[S.merchant.lang] || QUICK.en)[2]); }
+    if (act === 'ask') { if (pane !== 'voxa') openVoxa(); await ask(b.dataset.q); }
+    if (act === 'goto') { if (b.dataset.period) { period = b.dataset.period; render(); } V.markSection(id); V.onSection(id); }
+  } catch (err) {} finally { b.disabled = false; }
+});
+
+// ---------- charts ----------
+const C = { cyan: '#4fd1e8', violet: '#a99bff', coral: '#ff8f80', amber: '#ffc93c', blue: '#2f45d9', ink3: '#5f6f86', grid: '#edf0f6' };
+const short = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+const kfmt = (v) => (v >= 100000 ? (v / 100000).toFixed(1) + 'L' : v >= 1000 ? Math.round(v / 1000) + 'k' : String(v));
+
+function comboChart(groups, { w = 760, h = 260 } = {}) {
+  const padL = 44, padR = 44, padT = 12, padB = 30;
+  const iw = w - padL - padR, ih = h - padT - padB;
+  const maxV = Math.max(...groups.flatMap((g) => [g.a, g.b || 0])) * 1.12;
+  const lineVals = groups.map((g) => g.line);
+  const lMin = Math.min(...lineVals) * 0.9, lMax = Math.max(...lineVals) * 1.08;
+  const gw = iw / groups.length;
+  const two = groups.some((g) => g.b != null);
+  const bw = Math.min(16, gw * (two ? 0.3 : 0.55));
+  const Y = (v) => padT + ih - (v / maxV) * ih;
+  const YL = (v) => padT + ih - ((v - lMin) / (lMax - lMin)) * ih;
+  let svg = '';
+  for (let k = 0; k <= 4; k++) {
+    const v = (maxV / 4) * k, y = Y(v);
+    svg += `<line x1="${padL}" x2="${w - padR}" y1="${y}" y2="${y}" stroke="${C.grid}"/><text x="${padL - 8}" y="${y + 4}" font-size="11" fill="${C.ink3}" text-anchor="end">₹${kfmt(Math.round(v))}</text>`;
+    const lv = lMin + ((lMax - lMin) / 4) * k;
+    svg += `<text x="${w - padR + 8}" y="${YL(lv) + 4}" font-size="11" fill="${C.coral}">₹${Math.round(lv)}</text>`;
+  }
+  const every = Math.ceil(groups.length / 12);
+  groups.forEach((g, k) => {
+    const cx = padL + gw * k + gw / 2;
+    const xa = two ? cx - bw - 1.5 : cx - bw / 2;
+    svg += `<rect x="${xa}" y="${Y(g.a)}" width="${bw}" height="${Y(0) - Y(g.a)}" rx="3" fill="${C.cyan}"><title>${esc(g.label)}: ${inr(g.a)}</title></rect>`;
+    if (g.b != null) svg += `<rect x="${cx + 1.5}" y="${Y(g.b)}" width="${bw}" height="${Y(0) - Y(g.b)}" rx="3" fill="${C.violet}"><title>Period before: ${inr(g.b)}</title></rect>`;
+    if (k % every === 0) svg += `<text x="${cx}" y="${h - 8}" font-size="11" fill="${C.ink3}" text-anchor="middle">${esc(g.label)}</text>`;
+  });
+  const pts = groups.map((g, k) => `${padL + gw * k + gw / 2},${YL(g.line)}`).join(' ');
+  svg += `<polyline points="${pts}" fill="none" stroke="${C.coral}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  groups.forEach((g, k) => { svg += `<circle cx="${padL + gw * k + gw / 2}" cy="${YL(g.line)}" r="3" fill="#fff" stroke="${C.coral}" stroke-width="2"><title>Average bill ${inr(g.line)}</title></circle>`; });
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Sales overview chart" font-family="Geist">${svg}</svg>`;
+}
+
+function donut(parts, centerTop, centerBottom) {
+  const total = parts.reduce((s, p) => s + p.v, 0) || 1;
+  const r = 52, c = 2 * Math.PI * r;
+  let off = 0;
+  const arcs = parts.map((p) => {
+    const len = (p.v / total) * c;
+    const seg = `<circle r="${r}" cx="70" cy="70" fill="none" stroke="${p.color}" stroke-width="22" stroke-dasharray="${len} ${c - len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"><title>${esc(p.label)}: ${Math.round((p.v / total) * 100)}%</title></circle>`;
+    off += len;
+    return seg;
+  }).join('');
+  return `<svg viewBox="0 0 140 140" width="140" height="140" role="img" font-family="Geist">${arcs}
+    <text x="70" y="68" text-anchor="middle" font-size="15" font-weight="600" fill="#0b1b33">${esc(centerTop)}</text>
+    <text x="70" y="85" text-anchor="middle" font-size="10.5" fill="${C.ink3}">${esc(centerBottom)}</text></svg>
+    <div class="donut-legend">${parts.map((p) => `<div><i style="background:${p.color}"></i><b class="num">${Math.round((p.v / total) * 100)}%</b> ${esc(p.label)}</div>`).join('')}</div>`;
+}
+
+// ---------- Shop planner cards (from the server: payment data + what the merchant told Voxa) ----------
+const PLAN_TONE = { quiet: 'warn', festival: 'ai', regulars: 'bad', avgbill: 'info', stock: 'ok' };
+function plannerHTML(list, compact) {
+  if (!list.length) return '<div class="small muted">No suggestions yet.</div>';
+  return `<div class="plan-grid ${compact ? 'compact' : ''}">${list.map((x) => `
+    <div class="plan-item"><div class="dot-ico ${PLAN_TONE[x.id] || ''}">${i(x.icon)}</div>
+      <div data-noi18n>${(() => { const y = S && S.merchant.lang === 'ta' && x.ta ? x.ta : x; return `<b>${esc(y.title)}</b>${compact ? '' : `<p>${esc(y.text)}</p><span>${y === x ? 'Based on' : 'அடிப்படை'}: ${esc(y.data)}</span>`}`; })()}</div></div>`).join('')}</div>`;
+}
+
+// ---------- Insights: KPI cards, chart and Voxa tip all follow the period filter ----------
+function renderInsights() {
+  const m = periodModel();
+  const unitName = { day: 'day', week: 'week', month: 'month' }[m.unit];
+  const up = m.change >= 0;
+  const html = `
+    <div class="kpi"><div class="l">Sales · ${esc(m.name)}</div><div class="v">${inr(m.total)}</div><div class="d">${i('calendar-range')}${esc(m.curLabel)}</div></div>
+    <div class="kpi"><div class="l">vs ${esc(m.prevLabel.toLowerCase())}</div><div class="v ${up ? 'up' : 'down'}">${up ? '+' : ''}${m.change}%</div><div class="d">${i(up ? 'arrow-up' : 'arrow-down')}${inr(Math.abs(m.total - m.prevTotal))} ${up ? 'more' : 'less'} than ${inr(m.prevTotal)}</div></div>
+    <div class="kpi"><div class="l">Best ${unitName}</div><div class="v">${esc(m.best.full)}</div><div class="d">${i('trending-up')}${inr(m.best.cur)} · ${Math.round(((m.best.cur - m.avgGroup) / m.avgGroup) * 100)}% above average</div></div>
+    <div class="kpi"><div class="l">Weakest ${unitName}</div><div class="v">${esc(m.worst.full)}</div><div class="d">${i('trending-down')}${inr(m.worst.cur)} · ${Math.round(((m.avgGroup - m.worst.cur) / m.avgGroup) * 100)}% below average</div></div>`;
+  if ($('#insKpis').dataset.k !== m.key + m.total + S.merchant.lang) {
+    $('#insKpis').innerHTML = html;
+    $('#insKpis').dataset.k = m.key + m.total + S.merchant.lang;
+    $('#insKpis').classList.remove('flash'); void $('#insKpis').offsetWidth; $('#insKpis').classList.add('flash');
+  }
+
+  $('#insTitle').textContent = m.unit === 'month' ? `Monthly sales, this year vs last year` : m.unit === 'week' ? 'Weekly sales, last 13 weeks vs the 13 before' : `Daily sales, ${m.name.toLowerCase()} vs the ${m.days} days before`;
+  $('#insSub').textContent = `Each ${unitName} shows two bars: the earlier period in cyan, then ${m.name.toLowerCase()} in blue. Best ${unitName} is marked green, weakest amber. Hover a bar for the exact amount.`;
+  const TA = S.merchant.lang === 'ta';
+  const taName = (window.VT && VT.tr(m.name)) || m.name;
+  if (TA) {
+    const each = { day: 'ஒவ்வொரு நாளும்', week: 'ஒவ்வொரு வாரமும்', month: 'ஒவ்வொரு மாதமும்' }[m.unit];
+    const one = { day: 'நாள்', week: 'வாரம்', month: 'மாதம்' }[m.unit];
+    $('#insTitle').textContent = m.unit === 'month' ? 'மாத விற்பனை: இந்த ஆண்டு, கடந்த ஆண்டுடன்' : m.unit === 'week' ? 'வார விற்பனை: கடந்த 13 வாரங்கள், அதற்கு முந்தைய 13 வாரங்களுடன்' : `தினசரி விற்பனை: ${taName}, அதற்கு முந்தைய ${m.days} நாட்களுடன்`;
+    $('#insSub').textContent = `${each} இரண்டு கம்பங்கள்: முந்தைய காலம் வெளிர் நீலத்தில், ${taName} அடர் நீலத்தில். சிறந்த ${one} பச்சையில், குறைந்த ${one} மஞ்சளில். சரியான தொகையைப் பார்க்க கம்பத்தின் மேல் வையுங்கள்.`;
+  }
+  $('#insLegend').innerHTML = `<span><i style="background:#4fd1e8"></i>${esc(m.prevLabel)}</span><span><i style="background:#2f45d9"></i>${esc(m.curLabel)}</span>`;
+  drawOnce('insChart', m.key + m.total, groupedChart(m));
+
+  // Voxa tip for this period
+  const hr = S.history.hourly;
+  const scale = m.perDay / S.history.avg30;
+  const hrAvg = (hr.reduce((s, x) => s + x.avg, 0) / hr.length) * scale;
+  const slowH = (hr.filter((x) => x.hour >= 14 && x.hour < 17).reduce((s, x) => s + x.avg, 0) / 3) * scale;
+  const drop = Math.round((1 - slowH / hrAvg) * 100);
+  let title, body, icon = 'clock';
+  if (m.unit === 'month') {
+    icon = 'calendar-days';
+    const above = Math.round(((m.best.cur - m.avgGroup) / m.avgGroup) * 100), below = Math.round(((m.avgGroup - m.worst.cur) / m.avgGroup) * 100);
+    title = `${m.worst.month} is your quietest month, ${m.best.month} your busiest`;
+    body = `Over the ${m.name.toLowerCase()}, <b>${esc(m.best.full)}</b> sold ${inr(m.best.cur)}, <b>${above}% above</b> your average month, and <b>${esc(m.worst.full)}</b> sold ${inr(m.worst.cur)}, <b>${below}% below</b>. You are ${up ? 'up' : 'down'} ${Math.abs(m.change)}% on the same months last year. Keep extra money ready before festival months. Every day, 2 to 5 PM is still your quietest time.`;
+  } else {
+    const byWd = {};
+    S.history.days.slice(-Math.min(m.days, 91)).forEach((x) => { const wd = new Date(x.date).getDay(); (byWd[wd] = byWd[wd] || []).push(x.total); });
+    const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const avgWd = Object.entries(byWd).map(([wd, v]) => ({ wd: names[wd], avg: v.reduce((a, b) => a + b, 0) / v.length }));
+    const slowWd = avgWd.reduce((a, b) => (b.avg < a.avg ? b : a)), bestWd = avgWd.reduce((a, b) => (b.avg > a.avg ? b : a));
+    const plural = m.days === 7 ? '' : 's';
+    title = `${slowWd.wd}${plural} and 2 to 5 PM are your quiet times`;
+    body = `In the ${m.name.toLowerCase()}, ${bestWd.wd}${plural} brought the most (${inr(bestWd.avg)} a day) and <b>${slowWd.wd}${plural} the least (${inr(slowWd.avg)})</b>. Your best ${unitName} was ${esc(m.best.full)} at ${inr(m.best.cur)}. Between 2 and 5 PM, sales are about <b>${drop}% lower</b> than a normal hour: ${inr(slowH)} against ${inr(hrAvg)}. A good time to restock or do deliveries.`;
+  }
+  if (S.merchant.lang === 'ta') {
+    const WD = { Sunday: 'ஞாயிற்றுக்கிழமை', Monday: 'திங்கட்கிழமை', Tuesday: 'செவ்வாய்க்கிழமை', Wednesday: 'புதன்கிழமை', Thursday: 'வியாழக்கிழமை', Friday: 'வெள்ளிக்கிழமை', Saturday: 'சனிக்கிழமை' };
+    const MO = { Jan: 'ஜனவரி', Feb: 'பிப்ரவரி', Mar: 'மார்ச்', Apr: 'ஏப்ரல்', May: 'மே', Jun: 'ஜூன்', Jul: 'ஜூலை', Aug: 'ஆகஸ்ட்', Sep: 'செப்டம்பர்', Oct: 'அக்டோபர்', Nov: 'நவம்பர்', Dec: 'டிசம்பர்' };
+    const d = (s) => (window.VT && VT.tr(s)) || s;
+    const taName = d(m.name);
+    if (m.unit === 'month') {
+      const above = Math.round(((m.best.cur - m.avgGroup) / m.avgGroup) * 100), below = Math.round(((m.avgGroup - m.worst.cur) / m.avgGroup) * 100);
+      title = `${MO[m.worst.month] || m.worst.month} உங்கள் அமைதியான மாதம், ${MO[m.best.month] || m.best.month} அதிக விற்பனை மாதம்`;
+      body = `${esc(taName)}ல், <b>${esc(d(m.best.full))}</b> ${inr(m.best.cur)} விற்றது, சராசரி மாதத்தை விட <b>${above}% அதிகம்</b>; <b>${esc(d(m.worst.full))}</b> ${inr(m.worst.cur)} விற்றது, <b>${below}% குறைவு</b>. கடந்த ஆண்டின் அதே மாதங்களை விட ${Math.abs(m.change)}% ${up ? 'அதிகம்' : 'குறைவு'}. பண்டிகை மாதங்களுக்கு முன் கூடுதல் பணம் தயாராக வைத்திருங்கள். தினமும் மதியம் 2 முதல் 5 மணி இன்னும் அமைதியான நேரம்.`;
+    } else {
+      const byWd = {};
+      S.history.days.slice(-Math.min(m.days, 91)).forEach((x) => { const wd = new Date(x.date).getDay(); (byWd[wd] = byWd[wd] || []).push(x.total); });
+      const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const avgWd = Object.entries(byWd).map(([wd, v]) => ({ wd: WD[names[wd]], avg: v.reduce((a, b) => a + b, 0) / v.length }));
+      const slowWd = avgWd.reduce((a, b) => (b.avg < a.avg ? b : a)), bestWd = avgWd.reduce((a, b) => (b.avg > a.avg ? b : a));
+      title = `${slowWd.wd}யும் மதியம் 2–5 மணியும் உங்கள் அமைதியான நேரம்`;
+      body = `${esc(taName)}ல், ${bestWd.wd} அதிகம் விற்றது (தினமும் ${inr(bestWd.avg)}), <b>${slowWd.wd} குறைவு (${inr(slowWd.avg)})</b>. உங்கள் சிறந்த ${m.unit === 'week' ? 'வாரம்' : 'நாள்'}: ${esc(d(m.best.full))}, ${inr(m.best.cur)}. மதியம் 2 முதல் 5 மணி வரை விற்பனை சாதாரண நேரத்தை விட சுமார் <b>${drop}% குறைவு</b>: ${inr(slowH)}, சாதாரணமாக ${inr(hrAvg)}. சரக்கு அடுக்க அல்லது டெலிவரி செய்ய நல்ல நேரம்.`;
+    }
+  }
+  $('#insightCard').innerHTML = `
+    <div class="row top"><div class="dot-ico warn">${i(icon)}</div><div class="grow"><h2 class="card-title">${esc(title)}</h2>
+    <p class="ink-2" style="margin-top:4px;max-width:70ch">${body}</p></div></div>
+    <hr class="divider">
+    <div class="row between wrap"><div><h2 class="card-title">Voxa’s shop planner</h2><p class="small muted" style="margin-top:2px">Only from your payments and what you told Voxa. Voxa does not see your stock.</p></div>
+</div>
+    ${plannerHTML(S.planner || [])}`;
+  icons();
+}
+
+// ---------- one period model shared by every widget that follows the filter ----------
+const PERIOD_NAMES = { 7: 'Last 7 days', 30: 'Last 30 days', 90: 'Last 90 days', m6: 'Last 6 months', m12: 'Last 12 months' };
+function periodModel(per = period) {
+  const d = S.history.days, n = d.length;
+  const fmtD = (iso, o) => new Date(iso).toLocaleDateString('en-IN', o);
+  let groups, unit, curLabel, prevLabel, days;
+  if (per === 'm6' || per === 'm12') {
+    const count = per === 'm6' ? 6 : 12;
+    const mo = S.history.monthly.slice(12 - count);
+    groups = mo.map((r) => ({ label: `${r.month} ’${String(r.year).slice(2)}`, full: `${r.month} ${r.year}`, month: r.month, cur: r.thisYear, prev: r.lastYear, curYr: r.year, prevYr: r.year - 1 }));
+    unit = 'month'; days = Math.round(count * 30.4);
+    curLabel = `${mo[0].month} ${mo[0].year} – ${mo[count - 1].month} ${mo[count - 1].year}`;
+    prevLabel = `Same months a year before`;
+  } else if (per === '90') {
+    groups = [];
+    for (let k = 0; k < 13; k++) {
+      const cur = d.slice(n - 91 + k * 7, n - 91 + (k + 1) * 7), prev = d.slice(n - 182 + k * 7, n - 182 + (k + 1) * 7);
+      groups.push({ label: fmtD(cur[0].date, { day: 'numeric', month: 'short' }), full: `Week of ${fmtD(cur[0].date, { day: 'numeric', month: 'short' })}`, cur: cur.reduce((s, x) => s + x.total, 0), prev: prev.reduce((s, x) => s + x.total, 0) });
+    }
+    unit = 'week'; days = 91;
+    curLabel = 'Last 13 weeks'; prevLabel = 'The 13 weeks before';
+  } else {
+    days = Number(per);
+    const cur = d.slice(n - days), prev = d.slice(n - 2 * days, n - days);
+    groups = cur.map((x, k) => ({
+      label: days === 7 ? fmtD(x.date, { weekday: 'short' }) : fmtD(x.date, { day: 'numeric', month: 'short' }),
+      full: fmtD(x.date, { weekday: 'short', day: 'numeric', month: 'short' }), weekday: new Date(x.date).getDay(),
+      cur: x.total, prev: prev[k] ? prev[k].total : 0,
+    }));
+    unit = 'day';
+    curLabel = `Last ${days} days`; prevLabel = `The ${days} days before`;
+  }
+  const total = groups.reduce((s, g) => s + g.cur, 0), prevTotal = groups.reduce((s, g) => s + g.prev, 0);
+  const best = groups.reduce((a, b) => (b.cur > a.cur ? b : a)), worst = groups.reduce((a, b) => (b.cur < a.cur ? b : a));
+  return { key: per, name: PERIOD_NAMES[per], unit, groups, curLabel, prevLabel, total, prevTotal,
+    change: Math.round(((total - prevTotal) / prevTotal) * 1000) / 10, best, worst, perDay: Math.round(total / days), days,
+    avgGroup: Math.round(total / groups.length) };
+}
+
+// Grouped bars in the style of the reference: label strip on top, value on each bar.
+// Few groups (months, weeks, 7 days): header strip + value labels. Many (30 days): axis labels only.
+function groupedChart(m) {
+  const g = m.groups, few = g.length <= 13;
+  const w = 1120, h = few ? 400 : 340, padL = 70, padR = 14, headH = few ? 28 : 0, padT = headH + (few ? 26 : 14), padB = m.unit === 'month' ? 46 : 34;
+  const iw = w - padL - padR, ih = h - padT - padB;
+  const maxV = Math.max(...g.flatMap((r) => [r.cur, r.prev]));
+  const step = maxV > 400000 ? 100000 : maxV > 40000 ? 20000 : maxV > 20000 ? 5000 : 2000;
+  const max = Math.ceil((maxV * 1.12) / step) * step;
+  const Y = (v) => padT + ih - (v / max) * ih;
+  const gw = iw / g.length, bw = Math.min(30, gw * (few ? 0.34 : 0.38));
+  const short = (v) => (v >= 100000 ? '₹' + (v / 100000).toFixed(2) + 'L' : v >= 10000 ? '₹' + (v / 1000).toFixed(1) + 'k' : '₹' + Math.round(v).toLocaleString('en-IN'));
+  let s = '';
+  for (let v = 0; v <= max; v += step) {
+    s += `<line x1="${padL}" x2="${w - padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="#edf0f6"/>`;
+    s += `<text x="${padL - 10}" y="${Y(v) + 4}" font-size="12" fill="#5f6f86" text-anchor="end">${v ? (v >= 100000 ? '₹' + v / 100000 + 'L' : '₹' + v / 1000 + 'k') : '₹0'}</text>`;
+  }
+  s += `<text transform="translate(16 ${padT + ih / 2}) rotate(-90)" font-size="12" fill="#5f6f86" text-anchor="middle">Sales</text>`;
+  const every = few ? 1 : Math.ceil(g.length / 10);
+  g.forEach((r, k) => {
+    const x0 = padL + gw * k, cx = x0 + gw / 2;
+    const isBest = r === m.best, isWorst = r === m.worst;
+    if (few) {
+      s += `<rect x="${x0 + 1}" y="0" width="${gw - 2}" height="${headH}" rx="6" fill="${isBest ? '#e6f5ee' : isWorst ? '#fdf1e1' : k % 2 ? '#f1f3fa' : '#e8ebf8'}"/>`;
+      s += `<text x="${cx}" y="18" font-size="12.5" font-weight="600" fill="${isBest ? '#0c7d55' : isWorst ? '#a45200' : '#1f2fae'}" text-anchor="middle">${esc(r.label)}</text>`;
+      if (k) s += `<line x1="${x0}" x2="${x0}" y1="${headH + 6}" y2="${h - 6}" stroke="#e3e7f0"/>`;
+    } else if (k % every === 0) {
+      s += `<text x="${cx}" y="${h - 10}" font-size="12" fill="#5f6f86" text-anchor="middle">${esc(r.label)}</text>`;
+    }
+    [{ v: r.prev, c: '#4fd1e8', x: cx - bw - 2, yr: r.prevYr, who: m.prevLabel }, { v: r.cur, c: '#2f45d9', x: cx + 2, yr: r.curYr, who: m.curLabel }].forEach((b) => {
+      s += `<rect class="bar" style="animation-delay:${Math.min(k * 18, 300)}ms" x="${b.x}" y="${Y(b.v)}" width="${bw}" height="${Math.max(0, Y(0) - Y(b.v))}" rx="${few ? 4 : 2}" fill="${b.c}"><title>${esc(r.full)} · ${esc(b.who)}: ${inr(b.v)}</title></rect>`;
+      if (few) s += `<text x="${b.x + bw / 2}" y="${Y(b.v) - 6}" font-size="10.5" font-weight="600" fill="#3e4e66" text-anchor="middle">${short(b.v)}</text>`;
+      if (m.unit === 'month') s += `<text transform="translate(${b.x + bw / 2 + 4} ${h - padB + 10}) rotate(-90)" font-size="10.5" fill="#5f6f86" text-anchor="end">${b.yr}</text>`;
+    });
+  });
+  s += `<line x1="${padL}" x2="${w - padR}" y1="${Y(0)}" y2="${Y(0)}" stroke="#cdd6e3"/>`;
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${esc(m.name)}: sales against the period before" font-family="Geist">${s}</svg>`;
+}
+
+// Re-render a chart only when its content changes, and animate bars when it does.
+const drawn = {};
+function drawOnce(id, key, html) {
+  if (drawn[id] === key) return false;
+  drawn[id] = key;
+  const el = document.getElementById(id);
+  el.classList.remove('anim'); void el.offsetWidth;
+  el.innerHTML = html;
+  el.classList.add('anim');
+  return true;
+}
+
+function barChart(values, { w = 640, h = 170, color = () => C.blue, labels = [] } = {}) {
+  const max = Math.max(...values) * 1.08, bw = w / values.length;
+  const bars = values.map((v, k) => { const bh = (v / max) * (h - 24); return `<rect x="${k * bw + bw * 0.16}" y="${h - 20 - bh}" width="${bw * 0.68}" height="${bh}" rx="4" fill="${color(k)}"><title>${esc(labels[k] || '')}: ${inr(v)}</title></rect>`; }).join('');
+  const ticks = labels.map((l, k) => (l ? `<text x="${k * bw + bw / 2}" y="${h - 5}" font-size="10.5" fill="${C.ink3}" text-anchor="middle">${esc(l)}</text>` : '')).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" font-family="Geist"><line x1="0" x2="${w}" y1="${h - 20}" y2="${h - 20}" stroke="${C.grid}"/>${bars}${ticks}</svg>`;
+}
+
+// ---------- loan analysis ----------
+// Simple words for a merchant who may not read much English: labels follow the Voxa language.
+const LT = {
+  en: { need: 'How much do you need?', months: 'For how many months?', rate: 'Interest rate (estimate)', salesTitle: 'Your sales: last year, this year, loan year', salesSub: 'Voxa checks your past sales before you borrow. The loan year is an estimate.', barsTitle: 'Every month: your sales and your loan payment', barsSub: 'The whole bar is the month\'s sales. The top part goes to the loan.', simpleTitle: 'In simple words', fasterTitle: 'Can I pay it off faster?', extra: 'Pay extra each month', prepay: 'Yes, mostly up to you. Most Paytm merchant plans let you close early with no charge, which saves interest. Check your Key Fact Statement (KFS) to be sure.', rateNote: 'Set by the lender from your sales profile. This is Voxa\'s estimate.',
+    k1: 'Loan amount', k2: 'Interest', k3: 'Pay every month', k4: 'Total interest', k5: 'Loan finishes', perYear: 'a year', perDay: 'about {d} a day', monthsN: '{n} months', plusFee: 'plus {f} one-time fee',
+    lastYear: 'Last year', thisYear: 'This year', loanYear: 'Loan year (estimate)', kept: 'You keep', principal: 'Loan', interest: 'Interest',
+    w1: 'You borrow <b>{a}</b> in {s}. After the fee and GST, <b>{r}</b> reaches your bank.', w2: 'Every day about <b>{d}</b> is cut from your settlement. That is <b>{m}</b> a month.', w3: 'You pay back <b>{t}</b> in total: <b>{i}</b> of it is interest. There is also a {f} fee.', w4: 'Hardest month: <b>{h}</b>. The loan takes {p}% of that month\'s sales. You keep the rest.', w5: 'The loan finishes in <b>{e}</b>.', w6: 'If sales fall 20%, the loan takes <b>{p}%</b> of the hardest month’s sales. {v}', w6ok: 'Still easy to repay.', w6bad: 'That is heavy: try a smaller amount or more months.',
+    take: 'Take this loan', explain: 'Explain in my language', faster0: 'Move the slider to see how much faster you finish.', faster: 'Pay <b>{x}</b> more each month: you finish in <b>{e}</b>, {m} months sooner, and save <b>{s}</b> in interest.' },
+  ta: { need: 'உங்களுக்கு எவ்வளவு வேண்டும்?', months: 'எத்தனை மாதங்களுக்கு?', rate: 'வட்டி விகிதம் (மதிப்பீடு)', salesTitle: 'உங்கள் விற்பனை: கடந்த ஆண்டு, இந்த ஆண்டு, கடன் ஆண்டு', salesSub: 'கடன் வாங்கும் முன் Voxa உங்கள் பழைய விற்பனையைச் சரிபார்க்கிறது. கடன் ஆண்டு ஒரு மதிப்பீடு.', barsTitle: 'ஒவ்வொரு மாதமும்: விற்பனையும் கடன் தவணையும்', barsSub: 'முழு கம்பம் அந்த மாத விற்பனை. மேல் பகுதி கடனுக்குப் போகிறது.', simpleTitle: 'எளிய வார்த்தைகளில்', fasterTitle: 'சீக்கிரம் கட்டி முடிக்க முடியுமா?', extra: 'ஒவ்வொரு மாதமும் கூடுதலாக', prepay: 'பெரும்பாலும் உங்கள் கையில். பல Paytm வணிகக் கடன்களை கட்டணம் இல்லாமல் முன்கூட்டியே முடிக்கலாம், வட்டி மிச்சம். உறுதிப்படுத்த KFS ஆவணத்தைப் பாருங்கள்.', rateNote: 'உங்கள் விற்பனையைப் பார்த்து கடன் தருபவர் வட்டியை முடிவு செய்வார். இது Voxa மதிப்பீடு.',
+    k1: 'கடன் தொகை', k2: 'வட்டி', k3: 'மாதத் தவணை', k4: 'மொத்த வட்டி', k5: 'கடன் முடிவது', perYear: 'ஆண்டுக்கு', perDay: 'தினமும் சுமார் {d}', monthsN: '{n} மாதங்கள்', plusFee: 'ஒரு முறை கட்டணம் {f}',
+    lastYear: 'கடந்த ஆண்டு', thisYear: 'இந்த ஆண்டு', loanYear: 'கடன் ஆண்டு (மதிப்பீடு)', kept: 'உங்களுக்கு', principal: 'கடன்', interest: 'வட்டி',
+    w1: '{s}ல் <b>{a}</b> கடன். கட்டணம், GST போக, <b>{r}</b> உங்கள் வங்கிக்கு வரும்.', w2: 'தினமும் சுமார் <b>{d}</b> செட்டில்மென்டில் எடுக்கப்படும். மாதம் <b>{m}</b>.', w3: 'மொத்தம் <b>{t}</b> திருப்பிக் கட்டுவீர்கள்: அதில் <b>{i}</b> வட்டி. {f} கட்டணமும் உண்டு.', w4: 'கடினமான மாதம்: <b>{h}</b>. அந்த மாத விற்பனையில் {p}% கடனுக்குப் போகும்.', w5: 'கடன் <b>{e}</b>ல் முடியும்.', w6: 'விற்பனை 20% குறைந்தாலும், கடினமான மாதத்தில் <b>{p}%</b> மட்டுமே கடனுக்குப் போகும். {v}', w6ok: 'எளிதாகக் கட்டலாம்.', w6bad: 'இது அதிகம்: குறைந்த தொகை அல்லது அதிக மாதங்கள் முயற்சிக்கவும்.',
+    take: 'இந்தக் கடனை வாங்கு', explain: 'என் மொழியில் விளக்கு', faster0: 'எவ்வளவு சீக்கிரம் முடியும் என்று பார்க்க ஸ்லைடரை நகர்த்துங்கள்.', faster: 'மாதம் <b>{x}</b> கூடுதலாகக் கட்டினால் <b>{e}</b>ல் முடியும், {m} மாதம் முன்னதாக, வட்டியில் <b>{s}</b> மிச்சம்.' },
+  hi: { need: 'आपको कितना चाहिए?', months: 'कितने महीने के लिए?', rate: 'ब्याज दर (अनुमान)', salesTitle: 'आपकी बिक्री: पिछला साल, यह साल, लोन वाला साल', salesSub: 'लोन से पहले Voxa आपकी पुरानी बिक्री जाँचता है। लोन वाला साल एक अनुमान है।', barsTitle: 'हर महीना: बिक्री और लोन की किस्त', barsSub: 'पूरा बार उस महीने की बिक्री है। ऊपर का हिस्सा लोन में जाता है।', simpleTitle: 'आसान शब्दों में', fasterTitle: 'क्या जल्दी चुका सकते हैं?', extra: 'हर महीने ज़्यादा दें', prepay: 'ज़्यादातर आपके हाथ में। ज़्यादातर Paytm मर्चेंट लोन बिना चार्ज जल्दी बंद हो सकते हैं, ब्याज बचता है। पक्का करने के लिए KFS देखें।', rateNote: 'ब्याज लोन देने वाला आपकी बिक्री देखकर तय करता है। यह Voxa का अनुमान है।',
+    k1: 'लोन रकम', k2: 'ब्याज', k3: 'हर महीने', k4: 'कुल ब्याज', k5: 'लोन खत्म', perYear: 'सालाना', perDay: 'रोज़ करीब {d}', monthsN: '{n} महीने', plusFee: 'एक बार की फीस {f}',
+    lastYear: 'पिछला साल', thisYear: 'यह साल', loanYear: 'लोन वाला साल (अनुमान)', kept: 'आपके पास', principal: 'लोन', interest: 'ब्याज',
+    w1: '{s} में <b>{a}</b> का लोन। फीस और GST के बाद <b>{r}</b> आपके बैंक में आएँगे।', w2: 'रोज़ करीब <b>{d}</b> सेटलमेंट से कटेंगे। महीने के <b>{m}</b>।', w3: 'कुल <b>{t}</b> चुकाएँगे: इसमें <b>{i}</b> ब्याज है। {f} फीस भी है।', w4: 'सबसे भारी महीना: <b>{h}</b>। उस महीने की बिक्री का {p}% लोन में जाएगा।', w5: 'लोन <b>{e}</b> में खत्म होगा।', w6: 'अगर बिक्री 20% गिरे, तो सबसे भारी महीने की बिक्री का <b>{p}%</b> लोन में जाएगा। {v}', w6ok: 'फिर भी आसानी से चुका सकते हैं।', w6bad: 'यह भारी है: कम रकम या ज़्यादा महीने आज़माएँ।',
+    take: 'यह लोन लें', explain: 'मेरी भाषा में समझाएँ', faster0: 'स्लाइडर हिलाएँ और देखें कितनी जल्दी खत्म होगा।', faster: 'हर महीने <b>{x}</b> ज़्यादा दें तो <b>{e}</b> में खत्म, {m} महीने पहले, और ब्याज में <b>{s}</b> बचत।' },
+};
+const fill = (str, o) => str.replace(/\{(\w)\}/g, (_, k) => o[k] ?? '');
+const lt = () => LT[(S && S.merchant.lang) || 'en'];
+
+let loanTimer = null;
+function loadPlan() {
+  clearTimeout(loanTimer);
+  loanTimer = setTimeout(async () => {
+    const q = S && S.loan.status === 'active' ? { amount: S.loan.amount, months: S.loan.months, rate: S.loan.rate, extra: loanIn.extra } : Object.fromEntries(Object.entries(loanIn).filter(([, v]) => v !== null));
+    lp = await fetch('/api/loanplan?' + new URLSearchParams(q)).then((r) => r.json());
+    renderLoan();
+  }, 60);
+}
+
+function salesLines(p) {
+  const mo = S.history.monthly;
+  const rows = mo.map((r, k) => ({ m: r.month, ly: r.lastYear, ty: r.thisYear, ny: p.schedule[k] ? p.schedule[k].sales : Math.round(r.thisYear * 1.05) }));
+  const w = 560, h = 260, padL = 52, padR = 12, padT = 16, padB = 30;
+  const max = Math.ceil(Math.max(...rows.flatMap((r) => [r.ly, r.ty, r.ny])) * 1.1 / 100000) * 100000;
+  const X = (k) => padL + (k / (rows.length - 1)) * (w - padL - padR);
+  const Y = (v) => padT + (1 - v / max) * (h - padT - padB);
+  let s = '';
+  for (let v = 0; v <= max; v += 100000) s += `<line x1="${padL}" x2="${w - padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="#edf0f6"/><text x="${padL - 8}" y="${Y(v) + 4}" font-size="12" fill="#5f6f86" text-anchor="end">₹${v / 100000}L</text>`;
+  rows.forEach((r, k) => { s += `<text x="${X(k)}" y="${h - 8}" font-size="12" fill="#5f6f86" text-anchor="middle">${r.m}</text>`; });
+  const line = (key, color, dash) => `<polyline points="${rows.map((r, k) => `${X(k)},${Y(r[key])}`).join(' ')}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" ${dash ? 'stroke-dasharray="6 5"' : ''}/>` + rows.map((r, k) => `<circle cx="${X(k)}" cy="${Y(r[key])}" r="3.2" fill="#fff" stroke="${color}" stroke-width="2"><title>${r.m}: ${inr(r[key])}</title></circle>`).join('');
+  s += line('ly', '#4fd1e8') + line('ty', '#2f45d9') + line('ny', '#8b5cf6', true);
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" font-family="Geist">${s}</svg>`;
+}
+
+// One bar per loan month: the whole bar is expected sales; the top part is the loan payment,
+// split into principal and interest. Small parts get a minimum height so they stay visible,
+// and the exact amounts are printed under each bar.
+function loanBars(p) {
+  const rows = p.schedule;
+  const w = Math.max(640, rows.length * 62), h = 330, padL = 52, padR = 10, padT = 18, padB = 64;
+  const iw = w - padL - padR, ih = h - padT - padB;
+  const max = Math.ceil(Math.max(...rows.map((r) => r.sales)) * 1.08 / 100000) * 100000;
+  const Y = (v) => padT + ih - (v / max) * ih;
+  const gw = iw / rows.length, bw = Math.min(34, gw * 0.6);
+  let s = '';
+  for (let v = 0; v <= max; v += 100000) s += `<line x1="${padL}" x2="${w - padR}" y1="${Y(v)}" y2="${Y(v)}" stroke="#edf0f6"/><text x="${padL - 8}" y="${Y(v) + 4}" font-size="12" fill="#5f6f86" text-anchor="end">₹${v / 100000}L</text>`;
+  const T = lt();
+  rows.forEach((r, k) => {
+    const x = padL + gw * k + (gw - bw) / 2, cx = x + bw / 2;
+    const top = Y(r.sales), base = Y(0), full = base - top;
+    const hInt = Math.max(5, (r.interest / r.sales) * full), hPri = Math.max(7, (r.principal / r.sales) * full);
+    s += `<rect class="bar" style="animation-delay:${k * 25}ms" x="${x}" y="${top}" width="${bw}" height="${full}" rx="5" fill="#c9eff7"><title>${r.label}: sales ${inr(r.sales)}</title></rect>`;
+    s += `<rect x="${x}" y="${top}" width="${bw}" height="${hInt}" rx="3" fill="#ff8f80"><title>${r.label}: ${T.interest} ${inr(r.interest)}</title></rect>`;
+    s += `<rect x="${x}" y="${top + hInt}" width="${bw}" height="${hPri}" fill="#6a5cf6"><title>${r.label}: ${T.principal} ${inr(r.principal)}</title></rect>`;
+    s += `<text x="${cx}" y="${base + 16}" font-size="12" fill="#3e4e66" text-anchor="middle" font-weight="600">${r.short}</text>`;
+    s += `<text x="${cx}" y="${base + 33}" font-size="10.5" fill="#6a5cf6" text-anchor="middle">₹${(r.pay / 1000).toFixed(1)}k</text>`;
+    s += `<text x="${cx}" y="${base + 48}" font-size="10.5" fill="#e2604f" text-anchor="middle">₹${(r.interest / 1000).toFixed(1)}k</text>`;
+  });
+  s += `<text x="${padL - 8}" y="${h - padB + 33}" font-size="10.5" fill="#6a5cf6" text-anchor="end">${esc(T.principal)}</text><text x="${padL - 8}" y="${h - padB + 48}" font-size="10.5" fill="#e2604f" text-anchor="end">${esc(T.interest)}</text>`;
+  return `<svg viewBox="0 0 ${w} ${h}" role="img" font-family="Geist">${s}</svg>`;
+}
+
+function renderLoan() {
+  if (!lp || !S) return;
+  const T = lt(), p = lp, active = S.loan.status === 'active';
+  $$('[data-pane="loan"] [data-t]').forEach((el) => { if (T[el.dataset.t]) el.textContent = T[el.dataset.t]; });
+  $('#loanInputs').classList.toggle('hidden', active);
+  $('#vAmount').textContent = inr(loanIn.amount);
+  $('#vRate').textContent = `${p.rate}% ${T.perYear} · about ${p.monthlyRate}% a month`;
+  $('#inRate').value = p.rate;
+  $('#rateHint').innerHTML = `Voxa's guess for your profile: <b>${p.estimateRate}%</b>. Try 15% to 32% to see how the rate changes your payments. <button class="linkbtn" data-act="rateReset">Use Voxa's guess</button>`;
+  const EST = { en: ['Estimate only. Not a loan offer.', 'These numbers are for understanding. The real interest rate, fee and limit are set by the lending partner after checking your profile and CIBIL score, and are shown in the Key Fact Statement before you accept.'],
+    ta: ['இது ஒரு மதிப்பீடு மட்டுமே. கடன் சலுகை அல்ல.', 'இந்த எண்கள் புரிந்துகொள்வதற்காக மட்டும். உண்மையான வட்டி, கட்டணம், வரம்பை உங்கள் விவரம் மற்றும் CIBIL மதிப்பெண்ணைப் பார்த்து கடன் தருபவர் முடிவு செய்வார்.'],
+    hi: ['यह सिर्फ़ अनुमान है। लोन ऑफ़र नहीं।', 'ये आँकड़े समझने के लिए हैं। असली ब्याज, फ़ीस और लिमिट लोन देने वाला आपकी प्रोफ़ाइल और CIBIL स्कोर देखकर तय करता है, और KFS में दिखाता है।'] }[S.merchant.lang] || [];
+  $('#estBanner').innerHTML = active ? '' : `<div class="row top">${i('triangle-alert')}<div><b>${esc(EST[0])}</b><span>${esc(EST[1])}</span></div></div>`;
+  $('#estBanner').classList.toggle('hidden', active);
+  $('#inAmount').max = active ? p.amount : p.limit;
+  $('#vExtra').textContent = loanIn.extra ? '+' + inr(loanIn.extra) : '₹0';
+  $('#inAmount').value = loanIn.amount; $('#inExtra').value = loanIn.extra;
+  $$('#inMonths button').forEach((b) => b.classList.toggle('on', Number(b.dataset.m) === loanIn.months));
+
+  $('#loanActive').innerHTML = active ? `
+    <div class="panel"><div class="panel-body stack">
+      <div class="row between"><h2 class="card-title">Business loan · ${inr(S.loan.amount)}</h2>${badge('success', 'Active')}</div>
+      <div style="height:12px;background:var(--surface-2);border-radius:8px;overflow:hidden"><div style="height:100%;width:${Math.min(100, (S.loan.repaid / S.loan.totalRepay) * 100).toFixed(1)}%;background:var(--ok)"></div></div>
+      <div class="row between small"><span>Paid back <b class="num">${inr(S.loan.repaid)}</b></span><span class="muted">Left <b class="num">${inr(S.loan.outstanding)}</b> of ${inr(S.loan.totalRepay)}</span></div>
+    </div></div>` : '';
+
+  const key = JSON.stringify([p.amount, p.months, p.rate, p.extra, S.merchant.lang]);
+  $('#loanKpis').innerHTML = `
+    <div class="kpi"><div class="l">${esc(T.k1)}</div><div class="v">${inr(p.amount)}</div><div class="d">${i('calendar-days')}${esc(p.start)}</div></div>
+    <div class="kpi"><div class="l">${esc(T.k2)}</div><div class="v">${p.rate}%</div><div class="d">${i('percent')}${esc(T.perYear)}</div></div>
+    <div class="kpi"><div class="l">${esc(T.k3)}</div><div class="v">${inr(p.emi)}</div><div class="d">${i('sun')}${esc(fill(T.perDay, { d: inr(p.daily) }))}</div></div>
+    <div class="kpi"><div class="l">${esc(T.k4)}</div><div class="v" style="color:#e2604f">${inr(p.totalInterest)}</div><div class="d">${i('receipt')}${esc(fill(T.plusFee, { f: inr(p.fee) }))}</div></div>
+    <div class="kpi"><div class="l">${esc(T.k5)}</div><div class="v up">${esc(p.finish)}</div><div class="d">${i('flag')}${esc(fill(T.monthsN, { n: p.monthsTaken }))}</div></div>`;
+
+  $('#slLegend').innerHTML = `<span><i style="background:#4fd1e8"></i>${esc(T.lastYear)}</span><span><i style="background:#2f45d9"></i>${esc(T.thisYear)}</span><span><i style="background:#8b5cf6"></i>${esc(T.loanYear)}</span>`;
+  $('#lbLegend').innerHTML = `<span><i style="background:#c9eff7"></i>${esc(T.kept)}</span><span><i style="background:#6a5cf6"></i>${esc(T.principal)}</span><span><i style="background:#ff8f80"></i>${esc(T.interest)}</span>`;
+  drawOnce('salesLines', key, salesLines(p));
+  drawOnce('loanBars', key, loanBars(p));
+
+  $('#loanWords').innerHTML = [
+    ['hand-coins', fill(T.w1, { a: inr(p.amount), s: p.start, r: inr(p.received) })],
+    ['sun', fill(T.w2, { d: inr(p.daily), m: inr(p.emi) })],
+    ['receipt', fill(T.w3, { t: inr(p.totalPaid), i: inr(p.totalInterest), f: inr(p.fee) })],
+    ['shield-check', fill(T.w4, { h: p.hardest.label, p: p.hardest.share })],
+    ['trending-down', fill(T.w6, { p: p.slow.share, v: p.slow.safe ? T.w6ok : T.w6bad })],
+    ['flag', fill(T.w5, { e: p.finish })],
+  ].map(([ic, txt]) => `<div class="word">${i(ic)}<span>${txt}</span></div>`).join('');
+
+  $('#fasterResult').innerHTML = p.saving && p.extra
+    ? `<div class="fact ok">${i('rocket')}<div>${fill(T.faster, { x: inr(p.extra), e: p.finish, m: p.saving.months, s: inr(p.saving.interest) })}</div></div>`
+    : `<div class="small muted">${esc(T.faster0)}</div>`;
+
+  $('#loanBtns').innerHTML = active ? '' : `<button class="btn primary" data-act="acceptLoan">${i('hand-coins')}${esc(T.take)}</button>`;
+  $('#loanSource').innerHTML = `Loan ranges and EMI formula: <a href="${esc(p.source.url)}" target="_blank" rel="noopener">${esc(p.source.name)}</a>. A third-party summary; the lender decides the final rate.`;
+  icons();
+}
+
+$('#inAmount').addEventListener('input', (e) => { loanIn.amount = Number(e.target.value); $('#vAmount').textContent = inr(loanIn.amount); loadPlan(); });
+$('#inRate').addEventListener('input', (e) => { loanIn.rate = Number(e.target.value); $('#vRate').textContent = loanIn.rate + '% a year'; loadPlan(); });
+$('#inExtra').addEventListener('input', (e) => { loanIn.extra = Number(e.target.value); loadPlan(); });
+$('#inMonths').addEventListener('click', (e) => { const b = e.target.closest('[data-m]'); if (!b) return; loanIn.months = Number(b.dataset.m); loadPlan(); });
+
+// ---------- My loan: the active loan, or Voxa's eligibility check ----------
+function setLoanView(v) {
+  loanView = v;
+  $$('#loanTabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+  $('#mineView').classList.toggle('hidden', v !== 'mine');
+  $('#calcView').classList.toggle('hidden', v !== 'calc');
+  $('#settlePanel').classList.toggle('hidden', v !== 'mine' || !S || S.loan.status !== 'active');
+  if (v === 'calc') renderLoan(); else renderMine();
+}
+$('#loanTabs').addEventListener('click', (e) => { const b = e.target.closest('[data-v]'); if (b) setLoanView(b.dataset.v); });
+async function loadProfile() { prof = await fetch('/api/loanprofile').then((r) => r.json()); renderMine(); }
+
+function renderMine() {
+  if (!S || !prof) return;
+  const L = S.loan;
+  $('#settlePanel').classList.toggle('hidden', loanView !== 'mine' || L.status !== 'active');
+  if (L.status === 'active') {
+    const pct = Math.min(100, (L.repaid / L.totalRepay) * 100);
+    $('#mineView').innerHTML = `
+      <div class="kpis four">
+        <div class="kpi"><div class="l">Loan taken</div><div class="v">${inr(L.amount)}</div><div class="d">${i('landmark')}${inr(L.received || L.amount)} reached your bank</div></div>
+        <div class="kpi"><div class="l">Taken every day</div><div class="v">${inr(L.daily)}</div><div class="d">${i('sun')}${inr(L.emi)} a month, from settlement</div></div>
+        <div class="kpi"><div class="l">Interest rate</div><div class="v">${L.rate}%</div><div class="d">${i('percent')}a year, set by the lender</div></div>
+        <div class="kpi"><div class="l">Loan finishes</div><div class="v up">${esc(L.finish || '')}</div><div class="d">${i('flag')}${L.months} months</div></div>
+      </div>
+      <div class="panel"><div class="panel-body stack">
+        <div class="row between"><h2 class="card-title">Paid back so far</h2>${badge('success', 'Active')}</div>
+        <div style="height:14px;background:var(--surface-2);border-radius:8px;overflow:hidden"><div style="height:100%;width:${pct.toFixed(1)}%;background:var(--ok);transition:width 400ms var(--ease-out)"></div></div>
+        <div class="row between"><span>Paid back <b class="num">${inr(L.repaid)}</b></span><span class="muted">Left <b class="num">${inr(L.outstanding)}</b> of ${inr(L.totalRepay)}</span></div>
+        <div class="note-plain row top">${i('circle-help')}<span>Want to finish sooner? Most Paytm merchant plans let you close early with no charge. Check your Key Fact Statement (KFS).</span></div>
+      </div></div>`;
+    icons();
+    return;
+  }
+  const P = prof;
+  $('#mineView').innerHTML = `
+    <div class="panel"><div class="panel-body stack" style="gap:18px">
+      <div class="row top"><div class="dot-ico ${P.eligible ? 'ok' : 'warn'}" style="width:52px;height:52px;border-radius:14px">${i(P.eligible ? 'badge-check' : 'circle-help')}</div>
+        <div class="grow"><div class="small muted">You have no loan right now. Voxa checked your sales the way a lender would.</div>
+        <h2 class="card-title" style="font-size:24px;margin-top:2px">${P.eligible ? `You look eligible for up to ${inr(P.limit)}` : 'Not eligible yet'}</h2></div></div>
+      <div class="kpis four" style="gap:12px">
+        <div class="kpi flat"><div class="l">Likely rate</div><div class="v">${P.monthlyRate}%</div><div class="d">a month · ${P.rate}% a year</div></div>
+        <div class="kpi flat"><div class="l">Fee</div><div class="v">${P.feePct}%</div><div class="d">+ 18% GST, taken at the start</div></div>
+        <div class="kpi flat"><div class="l">Repaid</div><div class="v">Daily</div><div class="d">a small amount from settlement</div></div>
+        <div class="kpi flat"><div class="l">Credit score</div><div class="v">Lender</div><div class="d">checks it, not Voxa</div></div>
+      </div>
+      <div class="chk-pills">${P.checks.filter((c) => c.ok === true).map((c) => `<span>${i('circle-check')}${esc(c.label)}</span>`).join('')}</div>
+      <div><button class="btn primary lg" data-act="calcLimit" data-id="${P.limit}">${i('calculator')}See the estimate</button></div>
+      <p class="tiny muted">Estimate only. The lender decides the real amount, rate and fee. Source: <a href="${esc(P.source.url)}" target="_blank" rel="noopener">${esc(P.source.name)}</a>.</p>
+    </div></div>`;
+  icons();
+}
+
+// ---------- Voxa notes: only Voxa writes here ----------
+const NOTE_ICON = { dashboard: 'chart-column', loan: 'hand-coins', costs: 'piggy-bank', payment: 'hourglass', done: 'circle-check', note: 'pin', info: 'info' };
+const NOTE_TONE = { dashboard: 'ai', loan: 'ai', costs: 'ai', payment: 'warn', done: 'ok', note: 'info', info: 'info' };
+// ---------- Customers & Kanakku: people who joined on WhatsApp ----------
+let crmCfg = null;
+V.ready().then((c) => { crmCfg = c.whatsapp || { live: false }; if (pane === 'customers') renderCustomers(); });
+const maskPhone = (p) => (p ? p.slice(0, 3) + ' ••••• ' + p.slice(-4) : '');
+const balOf = (cu) => cu.udhar.reduce((s2, e) => s2 + (e.status !== 'confirmed' ? 0 : e.type === 'credit' ? e.amount : -e.amount), 0);
+const loyN = (cu) => cu.visits.filter((d) => d > (cu.cardResetOn || '')).length;
+const visits30 = (cu) => cu.visits.filter((d) => Date.now() - new Date(d).getTime() < 30 * 86400000).length;
+const lastVisit = (cu) => (cu.visits.length ? [...cu.visits].sort().pop() : '');
+const fmtVisit = (d) => { const days = Math.round((new Date(new Date().toDateString()) - new Date(d)) / 86400000); return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days + ' days ago'; };
+let crmOpen = null; // customer id whose Kanakku form is open
+// the shop's WhatsApp, linked like WhatsApp Web
+function linkedBox(l) {
+  if (l.status === 'connected') return `<div class="note-plain ok small row between"><span>${i('check')} Linked to <b>${esc(l.me || '')}</b>. Customers message this number.</span><button class="btn sm" data-crm="unlink">Unlink</button></div>`;
+  if (l.status === 'scan' && l.qr) return `<div class="link-box"><div id="linkQr"></div><div class="small"><b>Link the shop's WhatsApp</b><ol><li>Open WhatsApp on the shop phone</li><li>Settings → <b>Linked devices</b> → <b>Link a device</b></li><li>Scan this QR</li></ol><div class="tiny muted">Use a spare or demo number: this is not an official WhatsApp API.</div></div></div>`;
+  return `<div class="note-plain small">${i('loader')} ${esc(l.status === 'error' ? 'WhatsApp link error: ' + (l.error || '') : 'Preparing the WhatsApp link…')}</div>`;
+}
+// ---------- For Murugan: his phone chat with Voxa, his number, his updates ----------
+let crmTab = 'customers';
+function ownerHTML() {
+  const c = S.crm, st = c.settings, tg = crmCfg && crmCfg.provider === 'telegram';
+  const ownerLink = tg && crmCfg.bot && crmCfg.ownerCode ? `https://t.me/${crmCfg.bot}?start=${crmCfg.ownerCode}` : '';
+  const tog = (k, label) => `<label class="tg"><input type="checkbox" data-crmset="${k}" ${st[k] ? 'checked' : ''}><span></span>${label}</label>`;
+  const log = c.ownerLog || [];
+  return `
+    <div class="crm-top">
+      <div class="panel wa-panel"><div class="panel-body stack" style="gap:12px">
+        <div class="row between"><h2 class="card-title">${i('message-circle')} Ask Voxa from your phone</h2>${c.ownerChatId ? '<span class="tag ok">Your phone is linked</span>' : '<span class="tag pending">Not linked</span>'}</div>
+        <label class="small strong">Your number</label>
+        <div class="row" style="gap:8px"><input class="input" id="merchPhone" placeholder="+91 98765 43210" value="${esc(st.merchantPhone || '')}" style="flex:1"><button class="btn" id="savePhone">Save</button></div>
+        ${c.ownerChatId ? `<p class="small">Linked to <b>${esc(c.ownerName || 'Murugan')}</b>'s phone. Ask from the chat, for example:</p>
+          <ul class="small wa-tips"><li>"How were sales this week?"</li><li>"Any stuck payments?"</li><li>"Who owes me money?"</li><li>"Can I give Suresh 2000 credit?"</li><li>Reply <b>CONFIRM</b> when a customer pays back their kanakku</li></ul>
+          <div><button class="btn sm" data-crm="unlinkOwner">Unlink my phone</button></div>`
+        : ownerLink ? `<div class="link-box"><div id="ownerQr"></div><div class="small"><b>Link your phone</b><ol><li>Scan this QR with <b>your</b> phone camera</li><li>Tap <b>Start</b> in the chat</li><li>Or tap <b>Share my phone number</b>: if it matches the number above, you are linked</li></ol><div class="tiny muted">Only Murugan should scan this one.</div></div></div>`
+        : '<div class="note-plain warn small">The chat is not connected yet.</div>'}
+      </div></div>
+      <div class="panel"><div class="panel-body stack" style="gap:12px">
+        <h2 class="card-title">${i('bell')} Updates to your phone</h2>
+        ${tog('enabled', 'Send me updates')}
+        <div class="crm-sub ${st.enabled ? '' : 'off'}">
+          ${tog('dailySummary', 'Daily summary at')} <input type="time" class="input mini-time" id="sumTime" value="${esc(st.summaryTime)}">
+          ${tog('stuckAlerts', 'Stuck payment alerts')}
+          ${tog('udharAlerts', 'Kanakku: paid-back requests to confirm')}
+        </div>
+        <div class="row wrap" style="gap:8px"><button class="btn sm" data-crm="test">${i('send')}Send a test message</button><button class="btn sm" data-crm="summary">${i('newspaper')}Send today's update now</button></div>
+      </div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>What you asked from your phone</h2><span class="hint">newest first</span></div>
+      <div class="rows" style="padding:0 16px 12px">${log.length ? log.map((x) => `<div class="qa"><div class="qa-q">${i('user-round')}<span>${esc(x.q)}</span><span class="tiny muted">${ago(x.at)}</span></div><div class="qa-a">${i('bot')}<span>${esc(x.a)}</span></div></div>`).join('') : '<div class="muted small" style="padding:12px 0">Nothing yet. Link your phone and ask Voxa a question.</div>'}</div>
+    </div>`;
+}
+
+// ---------- WhatsApp tab: how customers reach the shop, and what was sent ----------
+function renderWhatsapp() {
+  const c = S.crm;
+  if (!c || !$('#waPane')) return;
+  const tg = crmCfg && crmCfg.provider === 'telegram', live = crmCfg && crmCfg.live;
+  const sentToday = (c.waLog || []).filter((w) => w.status === 'sent' && new Date(w.at).toDateString() === new Date().toDateString()).length;
+  const failed = (c.waLog || []).filter((w) => w.status === 'failed').length;
+  $('#waPane').innerHTML = `
+    <div class="kpis four">
+      <div class="kpi"><div class="l">Channel</div><div class="v" style="font-size:20px">${live ? 'Connected' : 'Off'}</div><div class="d">${i('message-circle')}${tg && crmCfg.bot ? '@' + esc(crmCfg.bot) : 'WhatsApp'}</div></div>
+      <div class="kpi"><div class="l">Customers on the list</div><div class="v">${c.customers.length}</div><div class="d">${i('users')}joined by scanning the poster</div></div>
+      <div class="kpi"><div class="l">Messages sent today</div><div class="v">${sentToday}</div><div class="d">${i('send')}cards, Kanakku, replies</div></div>
+      <div class="kpi"><div class="l">Not delivered</div><div class="v ${failed ? 'down' : ''}">${failed}</div><div class="d">${i('triangle-alert')}see the log below</div></div>
+    </div>
+    <div class="panel wa-panel"><div class="panel-body stack" style="gap:10px">
+      <h2 class="card-title">${i('message-circle')} How customers reach Murugan and Co</h2>
+      <ol class="small wa-tips"><li>They scan the <b>Smart QR poster</b> at the counter (Customers & Kanakku).</li><li>They tap Start / Send: they join the loyalty card and Kanakku updates.</li><li>After every payment they get their card; Kanakku balances and confirmations come here too.</li><li>They can reply CARD, BALANCE, PAID 500 or STOP (STOP deletes their data).</li></ol>
+      <div><button class="btn sm" data-act="goto" data-id="customers">${i('arrow-right')}Open the poster</button></div>
+    </div></div>
+    <details class="panel" open><summary class="panel-head" style="cursor:pointer"><h2>Delivery log</h2><span class="hint">what was sent and whether it went through</span></summary>
+      <div class="rows" style="padding:0 16px 12px">${(c.waLog || []).slice(0, 25).map((w) => `<div class="r"><span class="tag ${w.status === 'sent' ? 'ok' : w.status === 'failed' ? 'bad' : ''}">${w.status.replace('_', ' ')}</span><div class="grow small">${esc(w.to)} · ${esc(w.text.slice(0, 90))}${w.reason ? `<div class="tiny muted">${esc(w.reason)}</div>` : ''}</div><span class="tiny muted">${ago(w.at)}</span></div>`).join('') || '<div class="muted small">Nothing sent yet.</div>'}</div>
+    </details>
+    <p class="tiny muted wa-foot">${tg ? 'Demo: messages run on Telegram\'s free bot API. In production Voxa uses the official WhatsApp Business API (already built), which needs a verified business before it can message customers.' : ''}</p>`;
+  icons();
+}
+// the WhatsApp page uses the same buttons and switches as before
+document.addEventListener('click', async (e) => {
+  const t = e.target.closest('button');
+  if (!t || !t.closest('#waPane')) return;
+  try {
+    if (t.dataset.crm === 'test') { await api('/api/crm/test', {}); toast('Test message sent to your phone.'); }
+    if (t.dataset.crm === 'summary') { await api('/api/crm/summary', {}); toast("Today's update sent to your phone."); }
+    if (t.dataset.crm === 'unlinkOwner') { if (confirm('Unlink your phone from Voxa?')) await api('/api/crm/unlink-owner', {}); }
+  } catch (err) { toast(err.message || 'Something went wrong'); }
+});
+
+function renderCustomers() {
+  const c = S.crm;
+  if (!c) return;
+  const tabs = `<div class="seg crm-tabs"><button data-crmtab="customers" class="${crmTab === 'customers' ? 'on' : ''}">${i('users')}Customers</button><button data-crmtab="owner" class="${crmTab === 'owner' ? 'on' : ''}">${i('store')}For Murugan</button></div>`;
+  if (crmTab === 'owner') {
+    $('#customersPane').innerHTML = tabs + ownerHTML();
+    const ownerLink = crmCfg && crmCfg.provider === 'telegram' && crmCfg.bot && crmCfg.ownerCode ? `https://t.me/${crmCfg.bot}?start=${crmCfg.ownerCode}` : '';
+    const q = $('#ownerQr'); if (q && ownerLink && window.QRCode) new QRCode(q, { text: ownerLink, width: 170, height: 170, colorDark: '#0b1b33' });
+    icons();
+    return;
+  }
+  const st = c.settings, live = crmCfg && crmCfg.live;
+  const shopNum = crmCfg && crmCfg.provider === 'linked' ? ((c.link || {}).me || '') : (crmCfg && crmCfg.from) || '';
+  const tgBot = crmCfg && crmCfg.provider === 'telegram' ? crmCfg.bot : '';
+  const waLink = tgBot ? `https://t.me/${tgBot}?start=${encodeURIComponent(crmCfg.shopCode || 'join')}` : live && shopNum ? `https://wa.me/${shopNum.replace(/\D/g, '')}?text=${encodeURIComponent(crmCfg.joinText)}` : '';
+  const waiting = c.customers.flatMap((cu) => cu.udhar.filter((e) => e.status === 'pending').map((e) => ({ cu, e })));
+  const tog = (k, label) => `<label class="tg"><input type="checkbox" data-crmset="${k}" ${st[k] ? 'checked' : ''}><span></span>${label}</label>`;
+  $('#customersPane').innerHTML = tabs + `
+    <div class="crm-top">
+      <div class="panel loy-panel"><div class="panel-body stack" style="gap:12px">
+        <div class="row between"><h2 class="card-title">${i('gift')} Loyalty programme</h2><span class="tag">${c.customers.length} members</span></div>
+        <p class="small">Customers collect a visit each time they pay. When the card is full they get your reward on their phone.</p>
+        <label class="small strong">Card fills after</label>
+        <div class="row" style="gap:8px;align-items:center"><input class="input" id="loyDays" type="number" min="2" max="30" value="${c.loyaltyDays || 7}" style="width:84px"><span class="small">visits</span></div>
+        <label class="small strong">Reward</label>
+        <input class="input" id="rewardTxt" value="${esc(c.reward)}" placeholder="e.g. ₹150 off your next bill">
+        <label class="tg"><input type="checkbox" id="perPay" ${c.perPayment !== false ? 'checked' : ''}><span></span>Count every payment as a visit (off: one visit per day)</label>
+        <div><button class="btn primary" id="saveReward">${i('check')}Save loyalty programme</button></div>
+      </div></div>
+      <div class="panel"><div class="panel-body stack" style="gap:10px;align-items:center;text-align:center" id="posterBox">
+        <h2 class="card-title" style="align-self:flex-start">${i('qr-code')} Smart QR poster for your counter</h2>
+        <div class="poster">
+          <div class="poster-h">Murugan and Co</div>
+          <div class="poster-s">Scan · tap ${tgBot ? 'Start' : 'Send'} · get your ${c.loyaltyDays || 7}-visit rewards card and Kanakku updates on your phone</div>
+          <div id="joinQr" class="poster-qr">${live ? '' : '<div class="muted small" style="padding:40px 10px">QR appears once WhatsApp is connected</div>'}</div>
+          <div class="poster-f">Reward after ${c.loyaltyDays || 7} visits: <b>${esc(c.reward)}</b> · Send STOP any time to leave</div>
+        </div>
+        <div class="row wrap" style="gap:8px;justify-content:center"><button class="btn sm" data-crm="print" ${live ? '' : 'disabled'}>${i('printer')}Print poster</button></div>
+      </div></div>
+    </div>
+
+    ${waiting.length ? `<div class="panel attention-panel"><div class="panel-head"><h2>Waiting for your OK</h2><span class="tag pending">${waiting.length}</span></div><div class="rows">${waiting.map(({ cu, e }) => `
+      <div class="r"><div class="dot-ico warn">${i('hand-coins')}</div><div class="grow"><div class="strong">${esc(cu.name)} paid back ${inr(e.amount)}?</div><div class="tiny muted">${esc(e.note || '')} · ${ago(e.at)}</div></div>
+      <button class="btn ok sm" data-udconfirm="${e.id}">${i('check')}Confirm</button><button class="btn sm" data-udreject="${e.id}">${i('x')}Not paid</button></div>`).join('')}</div></div>` : ''}
+
+    <div class="panel">
+      <div class="panel-head"><h2>Your regular customers</h2><span class="hint">most regular first</span><span class="tag">${c.customers.length}</span></div>
+      ${c.customers.length ? `<div class="table-wrap" style="border-radius:0 0 14px 14px;margin-top:8px"><table class="table crm-table"><thead><tr><th>Customer</th><th class="r">Visits (30 days)</th><th>Last visit</th><th>Loyalty card</th><th class="r">Kanakku due</th><th>Credit check</th><th></th></tr></thead><tbody>${[...c.customers].sort((a, b) => visits30(b) - visits30(a) || lastVisit(b).localeCompare(lastVisit(a))).map((cu) => {
+        const b = balOf(cu), n = loyN(cu), L = c.loyaltyDays || 7, v30 = visits30(cu), lv = lastVisit(cu);
+        return `<tr><td><div class="strong">${esc(cu.name)}</div><div class="tiny muted">${maskPhone(cu.phone)}${cu.upiName ? ' · UPI linked' : ' · no UPI'} · joined ${ago(cu.joinedAt)}</div></td>
+          <td class="r strong">${v30}${v30 >= 8 ? ' <span class="tag ok" style="margin-left:4px">Regular</span>' : ''}</td>
+          <td class="small">${lv ? fmtVisit(lv) : '<span class="muted">—</span>'}</td>
+          <td><span class="loy">${'<i class="on"></i>'.repeat(Math.min(n, L))}${'<i></i>'.repeat(Math.max(0, L - n))}</span> <span class="tiny muted">${n}/${L}${cu.rewards ? ' · ' + cu.rewards + ' reward' + (cu.rewards > 1 ? 's' : '') : ''}</span></td>
+          <td class="r strong ${b > 0 ? 'down' : ''}">${b > 0 ? inr(b) : '—'}</td>
+          <td><button class="btn sm quiet" data-score="${cu.id}">${i('gauge')}Check</button><span class="tiny" id="sc-${cu.id}"></span></td>
+          <td class="r"><button class="btn sm" data-udopen="${cu.id}">${i('plus')}Kanakku</button>${b > 0 ? ` <button class="btn sm" data-udpaid="${cu.id}">${i('check')}Paid back</button>` : ''} <button class="btn icon quiet sm" data-crmdel="${cu.id}" aria-label="Remove">${i('trash-2')}</button></td></tr>
+          ${crmOpen === cu.id ? `<tr class="ud-form"><td colspan="7"><div class="row" style="gap:8px"><input class="input" id="udAmt" type="number" min="1" placeholder="Amount ₹" style="width:140px"><input class="input" id="udNote" placeholder="What for (optional)" style="flex:1"><button class="btn primary sm" data-udsave="${cu.id}">Add to kanakku and message ${esc(cu.name.split(' ')[0])}</button></div></td></tr>` : ''}`;
+      }).join('')}</tbody></table></div>` : `<div class="panel-body muted small">Nobody yet. When a customer scans the QR poster and taps Send on WhatsApp, they appear here.</div>`}
+    </div>
+`;
+  if (live && waLink && window.QRCode) new QRCode($('#joinQr'), { text: waLink, width: 180, height: 180, colorDark: '#0b1b33' });
+  else if ($('#joinQr') && crmCfg && crmCfg.provider === 'linked') $('#joinQr').innerHTML = '<div class="poster-wait"><b>Step 1 first</b>Scan the big QR on the left from the <b>shop phone</b> (WhatsApp → Linked devices → Link a device).<br><br>This poster QR for customers appears here by itself right after.</div>';
+  const lq = $('#linkQr'); if (lq && (c.link || {}).qr && window.QRCode) new QRCode(lq, { text: c.link.qr, width: 200, height: 200, colorDark: '#0b1b33' });
+  icons();
+}
+// actions on the Customers page
+document.addEventListener('change', (e) => {
+  const k = e.target.dataset && e.target.dataset.crmset;
+  if (k) api('/api/crm/settings', { [k]: e.target.checked });
+  if (e.target.id === 'sumTime') api('/api/crm/settings', { summaryTime: e.target.value });
+});
+document.addEventListener('click', async (e) => {
+  const t = e.target.closest('button');
+  if (!t || !t.closest('#customersPane')) return;
+  const d = t.dataset;
+  if (d.crmtab) { crmTab = d.crmtab; renderCustomers(); return; }
+  try {
+    if (d.crm === 'unlinkOwner') { if (confirm('Unlink your phone from Voxa?')) await api('/api/crm/unlink-owner', {}); }
+    if (t.id === 'savePhone') { await api('/api/crm/settings', { merchantPhone: $('#merchPhone').value }); toast('Saved.'); }
+    if (t.id === 'saveReward') { await api('/api/crm/settings', { reward: $('#rewardTxt').value, loyaltyDays: Number($('#loyDays').value), perPayment: $('#perPay').checked }); toast('Loyalty programme saved.'); }
+    if (d.crm === 'unlink') { if (confirm('Unlink the shop WhatsApp from Voxa?')) await api('/api/crm/unlink', {}); }
+    if (d.crm === 'test') { await api('/api/crm/test', {}); toast('Test message sent to your WhatsApp.'); }
+    if (d.crm === 'summary') { await api('/api/crm/summary', {}); toast("Today's update sent to your WhatsApp."); }
+    if (d.crm === 'print') { const w = window.open('', '_blank'); w.document.write('<html><head><title>Murugan and Co QR</title><style>body{font-family:sans-serif;text-align:center;padding:40px}.poster-h{font-size:40px;font-weight:700}.poster-s{font-size:20px;margin:12px 0 24px}.poster-f{font-size:16px;margin-top:24px}</style></head><body>' + $('.poster').innerHTML + '</body></html>'); w.document.close(); setTimeout(() => w.print(), 300); }
+    if (d.udconfirm) { await api('/api/crm/udhar/confirm', { id: d.udconfirm }); toast('Confirmed. The customer gets the new balance on WhatsApp.'); }
+    if (d.udreject) { await api('/api/crm/udhar/reject', { id: d.udreject }); toast('Marked as not paid.'); }
+    if (d.udopen) { crmOpen = crmOpen === d.udopen ? null : d.udopen; renderCustomers(); }
+    if (d.udsave) { const cu = S.crm.customers.find((x) => x.id === d.udsave); await api('/api/crm/udhar/add', { customer: cu.phone, amount: Number($('#udAmt').value), note: $('#udNote').value }); crmOpen = null; toast('Added to kanakku. ' + cu.name + ' gets a WhatsApp message.'); }
+    if (d.udpaid) { const cu = S.crm.customers.find((x) => x.id === d.udpaid); const a = prompt('How much did ' + cu.name + ' pay back? (₹)', String(balOf(cu))); if (a) { await api('/api/crm/udhar/paid', { customer: cu.phone, amount: Number(a) }); toast('Recorded. ' + cu.name + ' gets the new balance on WhatsApp.'); } }
+    if (d.crmdel) { const cu = S.crm.customers.find((x) => x.id === d.crmdel); if (confirm('Remove ' + cu.name + ' and all their data? This cannot be undone.')) await api('/api/crm/remove', { customer: cu.phone }); }
+    if (d.score) { const cu = S.crm.customers.find((x) => x.id === d.score); const r = await fetch('/api/crm/score?' + new URLSearchParams({ customer: cu.phone })).then((x) => x.json()); $('#sc-' + cu.id).innerHTML = ` <b class="${r.score >= 70 ? 'up' : r.score >= 45 ? '' : 'down'}">${r.label}</b> · up to ${inr(r.suggested_limit)}<div class="tiny muted">${esc(r.reasons.join(' · '))}</div>`; }
+  } catch (err) { toast(err.message || 'Something went wrong'); }
+});
+
+function renderNotes() {
+  const list = S.board || [];
+  $('#notesPane').innerHTML = list.length ? `
+    <p class="ink-2">Voxa writes down what matters so you can see it again: deadlines, your loan, your costs and anything you ask it to remember. Say <b>“remember …”</b> to add one.</p>
+    <div class="note-grid">${list.map((n) => `
+      <div class="panel"><div class="panel-body stack" style="gap:8px">
+        <div class="row between top"><div class="row top"><div class="dot-ico ${NOTE_TONE[n.tag] || ''}">${i(NOTE_ICON[n.tag] || 'pin')}</div><div><div class="strong" style="font-size:15.5px">${esc(n.title)}</div><div class="tiny muted">${ago(n.at)}</div></div></div>
+        <button class="btn icon quiet sm" data-act="delNote" data-id="${n.id}" aria-label="Remove note">${i('trash-2')}</button></div>
+        <div class="ink-2" style="font-size:14.5px">${esc(n.text)}</div>
+        ${n.card ? `<div data-notecard="${n.id}">${chatCard({ ...n.card, noteId: n.id })}</div>` : ''}
+      </div></div>`).join('')}</div>`
+    : `<div class="panel"><div class="panel-body empty-hero">
+        <div class="dot-ico ai" style="width:56px;height:56px;border-radius:16px">${i('notebook-pen')}</div>
+        <h2 class="card-title">Voxa's notes for you</h2>
+        <p class="ink-2" style="max-width:56ch">Voxa writes important things here: stuck payment deadlines, your loan, your monthly costs. You can also say “remember to pay the milk supplier on Friday”.</p>
+        <button class="btn primary lg" data-act="ask" data-q="Remember to pay the milk supplier on Friday">${i('mic')}Try: “Remember to pay the milk supplier on Friday”</button>
+      </div></div>`;
+  icons();
+}
+
+// ---------- costs & profit: a page only Voxa fills in ----------
+const COST_COLORS = { stock: '#2f45d9', rent: '#8b5cf6', electricity: '#ffc93c', salary: '#4fd1e8', transport: '#ff8f80', phone: '#13a06f', other: '#94a3b8' };
+const COST_ICONS = { stock: 'package', rent: 'house', electricity: 'zap', salary: 'users', transport: 'truck', phone: 'smartphone', other: 'circle-ellipsis' };
+const EXAMPLES = {
+  en: 'This month I paid 20k: rent 6k, electricity 4k, salary 8k',
+  ta: 'இந்த மாதம் 20 ஆயிரம் செலவு: வாடகை 6 ஆயிரம், கரண்ட் 4 ஆயிரம், சம்பளம் 8 ஆயிரம்',
+  hi: 'इस महीने 20 हज़ार खर्च: किराया 6 हज़ार, बिजली 4 हज़ार, वेतन 8 हज़ार',
+};
+
+// Costs & profit: say plainly where each number comes from, and let the merchant add what Paytm cannot see.
+function costsSourceHTML() {
+  return `<div class="panel"><div class="panel-body stack" style="gap:10px">
+    <h2 class="card-title">${i('info')} Where these numbers come from</h2>
+    <div class="src-grid">
+      <div class="src"><div class="dot-ico ok">${i('smartphone')}</div><div><b>Paytm sales</b><p class="small ink-2">Added automatically from every payment made to you on Paytm.</p></div></div>
+      <div class="src"><div class="dot-ico ai">${i('hand')}</div><div><b>Cash sales and costs</b><p class="small ink-2">Only what you add below or tell Voxa. Voxa never guesses a number.</p></div></div>
+    </div></div></div>`;
+}
+function costsAddHTML() {
+  const opts = [['cash_sales', 'Cash sales (not on Paytm)'], ['stock', 'Stock purchase'], ['rent', 'Rent'], ['electricity', 'Electricity'], ['salary', 'Staff salary'], ['transport', 'Transport'], ['phone', 'Phone & internet'], ['other', 'Other costs']];
+  return `<div class="panel"><div class="panel-body stack" style="gap:12px">
+    <div><h2 class="card-title">Add it yourself</h2><p class="small ink-2" style="margin-top:4px">Cash sales or a cost Paytm cannot see. Adding the same kind again for this month replaces it.</p></div>
+    <form class="add-cost" id="addCost">
+      <select id="acCat" class="input">${opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+      <input id="acAmt" class="input" type="number" min="1" step="1" inputmode="numeric" placeholder="Amount in ₹" required>
+      <button class="btn primary" type="submit">${i('plus')}Add</button>
+    </form>
+    <div class="row wrap" style="gap:10px"><label class="btn">${i('camera')}Add a bill photo<input type="file" accept="image/*" capture="environment" hidden data-billpick></label><span class="small muted">Voxa reads the bill and adds the cost. Photos of anything other than a printed bill are stopped on your phone and never sent.</span></div>
+  </div></div>`;
+}
+document.addEventListener('submit', async (e) => {
+  if (e.target.id !== 'addCost') return;
+  e.preventDefault();
+  const amount = Number($('#acAmt').value), category = $('#acCat').value;
+  if (!(amount > 0)) return toast('Enter an amount');
+  try { await api('/api/merchant/expenses/add', { category, amount }); toast('Saved'); } catch (err) { toast(err.message); }
+});
+
+// tapping a template in Voxa's picker
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pickstyle]');
+  if (!b) return;
+  b.closest('.pick-grid').querySelectorAll('.pick').forEach((x) => x.classList.toggle('on', x === b));
+  const body = { style: b.dataset.pickstyle, type: b.dataset.of, ...(b.dataset.period ? { period: b.dataset.period } : {}) };
+  const done = () => toast('Saved to Voxa notes in the ' + b.querySelector('b').textContent + ' look.');
+  if (b.dataset.note) api('/api/merchant/notes/dashboard', { id: b.dataset.note, ...body }).then(done);
+  else api('/api/merchant/notes/adddash', body).then(done);
+});
+
+// switching a note's chart look by hand (Voxa can do the same when asked)
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-cardstyle]');
+  if (!b) return;
+  const host = b.closest('[data-notecard]');
+  if (host) api('/api/merchant/notes/dashboard', { id: host.dataset.notecard, style: b.dataset.cardstyle });
+});
+
+function profitNow() {
+  const month = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+  const days = S.history.days.filter((d) => d.date.startsWith(month));
+  const paytm = days.reduce((s, d) => s + d.total, 0) + live().received;
+  const cash = (S.cashSales || []).filter((x) => x.month === month).reduce((s, x) => s + x.amount, 0);
+  const revenue = paytm + cash;
+  const list = S.expenses.filter((e) => e.month === month);
+  const by = {};
+  list.forEach((e) => (by[e.category] = (by[e.category] || 0) + e.amount));
+  const costs = Object.entries(by).map(([category, amount]) => ({ category, amount, label: list.find((e) => e.category === category).label })).sort((a, b) => b.amount - a.amount);
+  const costTotal = costs.reduce((s, c) => s + c.amount, 0);
+  const loanPaid = S.settlements.reduce((s, st) => s + st.deduction, 0);
+  return { month, monthName: new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }), revenue, paytm, cash, list, costs, costTotal, loanPaid, left: revenue - costTotal - loanPaid, hasStock: !!by.stock };
+}
+
+// Chart styles Voxa can pick for a dashboard: bar (one strip), donut, columns, line, table.
+function donutSVG(segs) {
+  const tot = segs.reduce((s, x) => s + x.v, 0) || 1, R = 54, C = 2 * Math.PI * R;
+  let off = 0;
+  const arcs = segs.map((x) => { const len = (x.v / tot) * C; const a = `<circle r="${R}" cx="70" cy="70" fill="none" stroke="${x.color}" stroke-width="22" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-off}"><title>${esc(x.label)}: ${inr(x.v)}</title></circle>`; off += len; return a; }).join('');
+  return `<div class="donut-wrap"><svg viewBox="0 0 140 140" width="150" height="150" style="transform:rotate(-90deg)">${arcs}</svg>
+    <div class="legend col">${segs.map((x) => `<span><i style="background:${x.color}"></i>${esc(x.label)} <b>${inr(x.v)}</b> · ${Math.round((x.v / tot) * 100)}%</span>`).join('')}</div></div>`;
+}
+function columnsHTML(segs) {
+  const max = Math.max(...segs.map((x) => x.v), 1);
+  return `<div class="cols-chart">${segs.map((x) => `<div class="cc"><div class="cc-v">${inr(x.v)}</div><div class="cc-bar" style="height:${Math.max(4, (x.v / max) * 120)}px;background:${x.color}" title="${esc(x.label)}"></div><div class="cc-l">${esc(x.label)}</div></div>`).join('')}</div>`;
+}
+function tableHTML(rows, head) {
+  return `<table class="table mini"><thead><tr>${head.map((h, k) => `<th class="${k ? 'r' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((v, k) => `<td class="${k ? 'r' : ''}">${v}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+function lineSVG(groups) {
+  const W = 520, H = 170, P = 26, n = groups.length, hasPrev = groups.some((g) => g.prev);
+  const max = Math.max(...groups.flatMap((g) => [g.cur, g.prev || 0]), 1);
+  const x = (k) => P + (k * (W - 2 * P)) / Math.max(1, n - 1), y = (v) => H - P - (v / max) * (H - 2 * P);
+  const path = (key) => groups.map((g, k) => `${k ? 'L' : 'M'}${x(k).toFixed(1)},${y(g[key] || 0).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" class="line-svg" preserveAspectRatio="none">
+    ${hasPrev ? `<path d="${path('prev')}" fill="none" stroke="#4fd1e8" stroke-width="2.5" stroke-dasharray="5 4"/>` : ''}
+    <path d="${path('cur')}" fill="none" stroke="#2f45d9" stroke-width="3"/>
+    ${groups.map((g, k) => `<circle cx="${x(k)}" cy="${y(g.cur)}" r="3.5" fill="#2f45d9"><title>${esc(g.full || g.label)}: ${inr(g.cur)}</title></circle>`).join('')}
+    ${groups.map((g, k) => (n <= 14 || k % Math.ceil(n / 8) === 0) ? `<text x="${x(k)}" y="${H - 6}" text-anchor="middle" font-size="10" fill="#64748b">${esc(g.label)}</text>` : '').join('')}
+  </svg>${hasPrev ? '<div class="legend"><span><i style="background:#4fd1e8"></i>Before</span><span><i style="background:#2f45d9"></i>This period</span></div>' : ''}`;
+}
+const STYLE_NAMES = { bar: 'Strip', donut: 'Donut', columns: 'Columns', line: 'Line', table: 'Table' };
+const LOAN_CACHE = {};
+// Small previews of each look, drawn in the app's colours, for Voxa's template picker.
+const THUMBS = {
+  bar: '<svg viewBox="0 0 120 70"><rect x="8" y="28" width="104" height="14" rx="7" fill="#e6eaf5"/><rect x="8" y="28" width="22" height="14" rx="7" fill="#94a3b8"/><rect x="30" y="28" width="12" height="14" fill="#2f45d9"/><rect x="42" y="28" width="10" height="14" fill="#8b5cf6"/><rect x="52" y="28" width="60" height="14" rx="7" fill="#13a06f"/></svg>',
+  donut: '<svg viewBox="0 0 120 70"><circle cx="60" cy="35" r="22" fill="none" stroke="#13a06f" stroke-width="10"/><circle cx="60" cy="35" r="22" fill="none" stroke="#2f45d9" stroke-width="10" stroke-dasharray="30 200" transform="rotate(-90 60 35)"/><circle cx="60" cy="35" r="22" fill="none" stroke="#8b5cf6" stroke-width="10" stroke-dasharray="18 200" stroke-dashoffset="-30" transform="rotate(-90 60 35)"/></svg>',
+  columns: '<svg viewBox="0 0 120 70"><rect x="14" y="40" width="16" height="22" rx="3" fill="#94a3b8"/><rect x="38" y="30" width="16" height="32" rx="3" fill="#2f45d9"/><rect x="62" y="46" width="16" height="16" rx="3" fill="#8b5cf6"/><rect x="86" y="12" width="16" height="50" rx="3" fill="#13a06f"/></svg>',
+  line: '<svg viewBox="0 0 120 70"><polyline points="10,52 30,40 50,44 70,26 90,30 110,14" fill="none" stroke="#2f45d9" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><polyline points="10,56 30,50 50,52 70,40 90,42 110,32" fill="none" stroke="#4fd1e8" stroke-width="2" stroke-dasharray="4 3"/></svg>',
+  table: '<svg viewBox="0 0 120 70"><rect x="10" y="10" width="100" height="12" rx="3" fill="#2f45d9"/><g fill="#e6eaf5"><rect x="10" y="26" width="100" height="9" rx="2"/><rect x="10" y="39" width="100" height="9" rx="2"/><rect x="10" y="52" width="100" height="9" rx="2"/></g><g fill="#94a3b8"><rect x="14" y="29" width="34" height="3"/><rect x="14" y="42" width="40" height="3"/><rect x="14" y="55" width="28" height="3"/></g></svg>',
+};
+const STYLES_FOR = { costs: ['bar', 'donut', 'columns', 'table'], sales: ['columns', 'line', 'table'], loan: ['bar', 'line', 'columns', 'table'] };
+const STYLE_HINT = { bar: 'Where each rupee went, in one strip', donut: 'Share of each cost', columns: 'Compare amounts side by side', line: 'How it changes over time', table: 'Exact numbers' };
+const TYPE_LABEL = { costs: 'Costs and profit', sales: 'Sales', loan: 'Loan plan' };
+function stylePickerHTML(c) {
+  const of = STYLES_FOR[c.of] ? c.of : 'costs';
+  return `<div class="vcard picker"><div class="vcard-h">${i('layout-template')}Pick a look for ${esc(TYPE_LABEL[of])}</div>
+    <div class="pick-grid">${STYLES_FOR[of].map((st) => `<button class="pick" data-pickstyle="${st}" data-of="${of}" data-note="${esc(c.note || '')}" data-period="${esc(c.period || '')}">${THUMBS[st]}<b>${STYLE_NAMES[st] === 'Strip' && of === 'loan' ? 'Summary' : STYLE_NAMES[st]}</b><span>${of === 'loan' && st === 'bar' ? 'The key numbers' : of === 'loan' && st === 'line' ? 'Loan left each month' : of === 'loan' && st === 'columns' ? 'Payment each month' : STYLE_HINT[st]}</span></button>`).join('')}</div>
+    <div class="tiny muted">${c.note ? 'Tap one to change the dashboard in your note.' : 'Tap one: Voxa saves it to your notes.'}</div></div>`;
+}
+function styleSwitch(c, styles) {
+  return `<div class="style-switch">${styles.map((st) => `<button class="${(c.style || styles[0]) === st ? 'on' : ''}" data-cardstyle="${st}">${c.type === 'loan' && st === 'bar' ? 'Summary' : STYLE_NAMES[st]}</button>`).join('')}</div>`;
+}
+
+function costsMini(p, style = 'bar') {
+  const segs0 = [...p.costs.map((c) => ({ label: c.label, v: c.amount, color: COST_COLORS[c.category] })), ...(p.loanPaid ? [{ label: 'Loan payments', v: p.loanPaid, color: '#ff8f80' }] : []), { label: 'Left with you', v: Math.max(0, p.left), color: '#13a06f' }];
+  if (style === 'donut') return donutSVG(segs0);
+  if (style === 'columns') return columnsHTML(segs0);
+  if (style === 'table') return tableHTML(segs0.map((x) => [`<i class="dot" style="background:${x.color}"></i>${esc(x.label)}`, inr(x.v)]), ['Where the money went', 'Amount']);
+  return costsStrip(p);
+}
+function costsStrip(p) {
+  const segs = [...p.costs.map((c) => ({ label: c.label, v: c.amount, color: COST_COLORS[c.category] })), ...(p.loanPaid ? [{ label: 'Loan payments', v: p.loanPaid, color: '#ff8f80' }] : []), { label: 'Left with you', v: Math.max(0, p.left), color: '#13a06f' }];
+  const tot = segs.reduce((s, x) => s + x.v, 0) || 1;
+  return `<div class="flowbar">${segs.map((x) => `<span style="width:${Math.max(1.5, (x.v / tot) * 100)}%;background:${x.color}" title="${esc(x.label)}: ${inr(x.v)}"></span>`).join('')}</div>
+    <div class="legend" style="margin-top:8px">${segs.map((x) => `<span><i style="background:${x.color}"></i>${esc(x.label)} ${inr(x.v)}</span>`).join('')}</div>`;
+}
+
+function renderCosts() {
+  const p = profitNow();
+  const lang = S.merchant.lang;
+  if (!p.list.length && !p.cash) {
+    $('#costsPane').innerHTML = costsSourceHTML() + `
+      <div class="panel"><div class="panel-body empty-hero">
+        <div class="dot-ico ai" style="width:56px;height:56px;border-radius:16px">${i('bot')}</div>
+        <h2 class="card-title">Voxa keeps this page for you</h2>
+        <p class="ink-2" style="max-width:56ch">Tell Voxa what it cost to run your shop this month: rent, electricity, salary, stock. Speak in your own language. Voxa builds your profit picture here.</p>
+        <button class="btn primary lg" data-act="ask" data-q="${esc(EXAMPLES[lang])}">${i('mic')}Try: “${esc(EXAMPLES[lang])}”</button>
+      </div></div>` + costsAddHTML();
+    icons();
+    return;
+  }
+  $('#costsPane').innerHTML = costsSourceHTML() + `
+    <div class="kpis four">
+      <div class="kpi"><div class="l">Sales · ${esc(p.monthName)}</div><div class="v">${inr(p.revenue)}</div><div class="d">${i('trending-up')}${p.cash ? `Paytm ${inr(p.paytm)} + cash ${inr(p.cash)}` : 'Only from Paytm'}</div></div>
+      <div class="kpi"><div class="l">Cost to run the shop</div><div class="v" style="color:#8b5cf6">${inr(p.costTotal)}</div><div class="d">${i('store')}${p.costs.length} kinds of cost</div></div>
+      <div class="kpi"><div class="l">Loan payments</div><div class="v" style="color:#e2604f">${inr(p.loanPaid)}</div><div class="d">${i('hand-coins')}taken from settlements</div></div>
+      <div class="kpi"><div class="l">Left with you</div><div class="v up">${inr(p.left)}</div><div class="d">${i('wallet')}${p.revenue ? Math.round((p.left / p.revenue) * 100) : 0}% of sales</div></div>
+    </div>
+    ${p.hasStock ? '' : `<div class="note-plain warn row">${i('package')}<span>Stock purchases are not added yet, so this is not your real profit. Tell Voxa what you spent on stock.</span><button class="btn sm" data-act="ask" data-q="${esc(lang === 'ta' ? 'இந்த மாதம் சரக்கு 1 லட்சம்' : lang === 'hi' ? 'इस महीने माल 1 लाख' : 'This month stock 1 lakh')}">${i('mic')}Add stock</button></div>`}
+    <div class="panel"><div class="panel-body stack" style="gap:12px">
+      <div><h2 class="card-title">Where this month's money went</h2><p class="ink-2 small" style="margin-top:4px">From all the money that came in, this is what went to running the shop, to the loan, and what is left with you.</p></div>
+      ${costsMini(p)}
+    </div></div>
+    <div class="loan-grid">
+      <div class="panel"><div class="panel-body stack" style="gap:12px"><h2 class="card-title">Costs Voxa has noted</h2>
+        <div class="rows">${p.costs.map((c) => `<div class="r" style="padding:10px 0"><div class="dot-ico" style="background:${COST_COLORS[c.category]}22;color:${COST_COLORS[c.category]}">${i(COST_ICONS[c.category] || 'circle')}</div><div class="grow strong">${esc(c.label)}</div><div class="amt">${inr(c.amount)}</div></div>`).join('')}</div>
+      </div></div>
+      <div class="panel"><div class="panel-body stack" style="gap:12px"><h2 class="card-title">What you told Voxa</h2>
+        ${[...new Set(p.list.map((e) => e.said).filter(Boolean))].slice(-4).map((t) => `<div class="note-plain ai row top">${i('mic')}<span>“${esc(t)}”</span></div>`).join('') || '<div class="muted small">No notes.</div>'}
+        <p class="tiny muted">You or Voxa can update this page. Adding the same kind of cost again replaces it.</p>
+      </div></div>
+    </div>` + costsAddHTML();
+  icons();
+}
+
+// ---------- dashboard cards inside Voxa's replies ----------
+function chatCard(c) {
+  if (c.type === 'costs') {
+    const p = profitNow();
+    if (!p.list.length) return '';
+    return `<div class="vcard"><div class="vcard-h">${i('piggy-bank')}${esc(c.title || 'Costs and profit')} · ${esc(p.monthName)}</div>
+      <div class="vcard-k"><div><span>Sales</span><b>${inr(p.revenue)}</b></div><div><span>Costs</span><b style="color:#8b5cf6">${inr(p.costTotal)}</b></div><div><span>Loan</span><b style="color:#e2604f">${inr(p.loanPaid)}</b></div><div><span>Left</span><b class="up">${inr(p.left)}</b></div></div>
+      ${costsMini(p, c.style)}${c.noteId ? styleSwitch(c, ['bar', 'donut', 'columns', 'table']) : ''}<button class="btn sm" data-act="goto" data-id="costs">${i('arrow-right')}Open costs and profit</button></div>`;
+  }
+  if (c.type === 'sales') {
+    const m = periodModel(c.period || '7');
+    const salesBody = c.style === 'line' ? `<div class="chart">${lineSVG(m.groups)}</div>` : c.style === 'table' ? tableHTML(m.groups.map((g) => [esc(g.full || g.label), inr(g.cur), g.prev ? inr(g.prev) : '—']), [m.unit === 'month' ? 'Month' : m.unit === 'week' ? 'Week' : 'Day', 'Sales', 'Before']) : `<div class="chart" style="overflow-x:auto"><div style="min-width:520px">${groupedChart(m)}</div></div>`;
+    return `<div class="vcard"><div class="vcard-h">${i('chart-column')}${esc(c.title || 'Sales')} · ${esc(m.name)}</div>
+      <div class="vcard-k"><div><span>Sales</span><b>${inr(m.total)}</b></div><div><span>Change</span><b class="${m.change >= 0 ? 'up' : 'down'}">${m.change >= 0 ? '+' : ''}${m.change}%</b></div><div><span>Best</span><b>${esc(m.best.label)}</b></div><div><span>Weakest</span><b>${esc(m.worst.label)}</b></div></div>
+      ${salesBody}${c.noteId ? styleSwitch(c, ['columns', 'line', 'table']) : ''}
+      <button class="btn sm" data-act="goto" data-id="insights" data-period="${esc(m.key)}">${i('arrow-right')}Open insights</button></div>`;
+  }
+  if (c.type === 'loan') {
+    const lkey = [c.amount || (lp && lp.amount) || 150000, c.months || 12, c.rate || ''].join('|');
+    const p = c.plan || LOAN_CACHE[lkey] || (!c.amount && lp);
+    if (!p) { if (!LOAN_CACHE[lkey + ':busy']) { LOAN_CACHE[lkey + ':busy'] = 1; fetch('/api/loanplan?' + new URLSearchParams({ amount: c.amount || 150000, months: c.months || 12, ...(c.rate ? { rate: c.rate } : {}) })).then((r) => r.json()).then((x) => { LOAN_CACHE[lkey] = x; renderChat(); if (pane === 'notes') renderNotes(); }); } return '<div class="vcard muted small">Loading loan plan…</div>'; }
+    const sched = p.schedule || [];
+    const loanBody = c.style === 'line' ? `<div class="chart">${lineSVG(sched.map((r) => ({ label: r.short || r.month, full: r.label, cur: r.balance, prev: null })))}</div><div class="tiny muted">Loan left after each month</div>`
+      : c.style === 'columns' ? columnsHTML(sched.map((r) => ({ label: r.short || r.month, v: r.pay, color: '#6a5cf6' })))
+      : c.style === 'table' ? tableHTML(sched.map((r) => [esc(r.label), inr(r.pay), inr(r.interest), inr(r.balance)]), ['Month', 'Pay', 'Interest', 'Left'])
+      : '';
+    return `<div class="vcard"><div class="vcard-h">${i('hand-coins')}${esc(c.title || 'Loan plan')} · ${inr(p.amount)}</div>
+      <div class="vcard-k"><div><span>Every month</span><b>${inr(p.emi)}</b></div><div><span>A day</span><b>${inr(p.daily)}</b></div><div><span>Interest</span><b style="color:#e2604f">${inr(p.totalInterest)}</b></div><div><span>Finishes</span><b class="up">${esc(p.finish)}</b></div></div>
+      ${loanBody}${c.noteId ? styleSwitch(c, ['bar', 'line', 'columns', 'table']) : ''}
+      <button class="btn sm" data-act="goto" data-id="loan">${i('arrow-right')}Open loan analysis</button></div>`;
+  }
+  if (c.type === 'style_picker') return stylePickerHTML(c);
+  if (c.type === 'planner') {
+    return `<div class="vcard"><div class="vcard-h">${i('calendar-days')}Voxa’s shop planner</div>${plannerHTML((S.planner || []).slice(0, 4), true)}
+      <button class="btn sm" data-act="goto" data-id="insights">${i('arrow-right')}Open sales insights</button></div>`;
+  }
+  if (c.type === 'eligibility') {
+    if (!prof) { loadProfile().then(renderChat); return '<div class="vcard muted small">Checking your profile…</div>'; }
+    return `<div class="vcard"><div class="vcard-h">${i('badge-check')}Loan check · ${prof.eligible ? 'looks eligible' : 'not yet'}</div>
+      <div class="vcard-k"><div><span>Up to</span><b class="up">${inr(prof.limit)}</b></div><div><span>Likely rate</span><b>${prof.monthlyRate}%/mo</b></div><div><span>Fee</span><b>${prof.feePct}% + GST</b></div><div><span>Profile</span><b>${esc(prof.band)}</b></div></div>
+      <button class="btn sm" data-act="goto" data-id="loan">${i('arrow-right')}Open my loan</button></div>`;
+  }
+  if (c.type === 'notes') {
+    const n = (S.board || [])[0];
+    return n ? `<div class="vcard"><div class="vcard-h">${i('notebook-pen')}Saved to Voxa notes</div><div><b>${esc(n.title)}</b></div><button class="btn sm" data-act="goto" data-id="notes">${i('arrow-right')}Open Voxa notes</button></div>` : '';
+  }
+  if (c.type === 'payments') {
+    const list = S.txns.filter((t) => t.kind === 'payment').slice(0, 3);
+    return `<div class="vcard"><div class="vcard-h">${i('arrow-left-right')}Recent payments</div>
+      ${list.length ? list.map((t) => `<div class="row between" style="padding:6px 0;border-top:1px solid var(--line)"><span class="small">${esc(t.fromName)} · ${time(t.createdAt)}${t.status === 'pending' ? ` · <span class="mono">UPI ref ${esc(t.utr)}</span>` : ''}</span><span class="row" style="gap:8px"><b class="amt">${inr(t.amount)}</b>${badge(t.status)}</span></div>${t.status === 'pending' ? route(t) : ''}`).join('') : '<div class="small muted">No live payments yet today.</div>'}
+      <button class="btn sm" data-act="goto" data-id="payments">${i('arrow-right')}Open payments</button></div>`;
+  }
+  return '';
+}
+
+// ---------- numbers ----------
+function live() {
+  const pays = S.txns.filter((t) => t.kind === 'payment');
+  const ok = pays.filter((t) => t.status === 'success');
+  return {
+    pays,
+    received: S.history.todaySoFar + ok.reduce((s, t) => s + t.amount, 0),
+    bills: S.history.todayBills + ok.length,
+    stuck: pays.filter((t) => t.status === 'pending').reduce((s, t) => s + t.amount, 0),
+    refunded: S.txns.filter((t) => t.kind === 'refund' || t.status === 'reversed').reduce((s, t) => s + t.amount, 0),
+  };
+}
+
+function renderPeriodSelect() {
+  const d = S.history.days, n = d.length;
+  const opt = (len) => `${short(d[n - len].date)} – ${short(d[n - 1].date)}`;
+  const mo = S.history.monthly;
+  const mLabel = (k) => `${mo[k].month} ${mo[k].year}`;
+  const html = [7, 30, 90].map((len) => `<option value="${len}" ${String(len) === period ? 'selected' : ''}>Last ${len} days · ${opt(len)}</option>`).join('')
+    + `<option value="m6" ${period === 'm6' ? 'selected' : ''}>Last 6 months · ${mLabel(6)} – ${mLabel(11)}</option>`
+    + `<option value="m12" ${period === 'm12' ? 'selected' : ''}>Last 12 months · ${mLabel(0)} – ${mLabel(11)}</option>`;
+  if ($('#period').dataset.v !== html) { $('#period').innerHTML = html; $('#period').dataset.v = html; }
+}
+
+// Monthly view (6 or 12 months): this year's months next to the same months a year before.
+// Average bill is higher in festival months, when people buy more per visit.
+function monthlyRows(count) {
+  const mo = S.history.monthly.slice(12 - count);
+  const peak = Math.max(...S.history.monthly.map((r) => r.thisYear));
+  return mo.map((r) => {
+    const avgBill = Math.round(160 + 50 * (r.thisYear / peak));
+    return { label: `${r.month} ’${String(r.year).slice(2)}`, full: `${r.month} ${r.year}`, a: r.thisYear, b: r.lastYear, line: avgBill, bills: Math.round(r.thisYear / avgBill) };
+  });
+}
+
+function renderDashboardCharts() {
+  const d = S.history.days, n = d.length;
+  let groups;
+  if (period === 'm6' || period === 'm12') {
+    const count = period === 'm6' ? 6 : 12;
+    const rowsM = monthlyRows(count);
+    $('#overview').innerHTML = comboChart(rowsM);
+    $('#ovSub').textContent = `Monthly sales for the last ${count} months, next to the same months a year before`;
+    $('#lgPrev').classList.remove('hidden');
+    $('#lgPrev').lastChild.textContent = 'Same month last year';
+    $('#tblHint').textContent = `last ${count} months`;
+    $('#tblTitle').textContent = 'Monthly sales';
+    const avgM = rowsM.reduce((s, r) => s + r.a, 0) / rowsM.length;
+    $('#dayTable').innerHTML = `<thead><tr><th>Month</th><th class="r">Bills</th><th class="r">Sales</th></tr></thead><tbody>${rowsM.slice().reverse().map((r) => `
+      <tr><td>${esc(r.full)}</td><td class="r">${r.bills.toLocaleString('en-IN')}</td><td class="r" style="color:${r.a >= avgM ? 'var(--ok)' : 'var(--ink-2)'}">${inr(r.a)}</td></tr>`).join('')}</tbody>`;
+    return;
+  }
+  $('#lgPrev').lastChild.textContent = 'Period before';
+  const days = Number(period);
+  if (days === 90) {
+    groups = [];
+    for (let k = 0; k < 13; k++) {
+      const wk = d.slice(Math.max(0, n - 91 + k * 7), n - 91 + (k + 1) * 7).filter(Boolean);
+      const tot = wk.reduce((s, x) => s + x.total, 0), cnt = wk.reduce((s, x) => s + x.count, 0);
+      groups.push({ label: short(wk[0].date), a: tot, line: Math.round(tot / cnt) });
+    }
+    $('#ovSub').textContent = 'Weekly sales over the last 90 days';
+    $('#lgPrev').classList.add('hidden');
+  } else {
+    const cur = d.slice(n - days), prev = d.slice(n - 2 * days, n - days);
+    groups = cur.map((x, k) => ({ label: days === 7 ? new Date(x.date).toLocaleDateString('en-IN', { weekday: 'short' }) : short(x.date), a: x.total, b: prev[k] ? prev[k].total : null, line: Math.round(x.total / x.count) }));
+    $('#ovSub').textContent = `Daily sales for the last ${days} days, next to the ${days} days before`;
+    $('#lgPrev').classList.remove('hidden');
+  }
+  $('#overview').innerHTML = comboChart(groups);
+
+  const avg = S.history.avg30;
+  const rows = d.slice(n - days).reverse();
+  $('#tblHint').textContent = `last ${days} days`;
+  $('#tblTitle').textContent = 'Daily sales';
+  $('#dayTable').innerHTML = `<thead><tr><th>Date</th><th class="r">Bills</th><th class="r">Sales</th></tr></thead><tbody>${rows.map((x) => `
+    <tr><td>${new Date(x.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td><td class="r">${x.count}</td>
+    <td class="r" style="color:${x.total >= avg ? 'var(--ok)' : 'var(--ink-2)'}">${inr(x.total)}</td></tr>`).join('')}</tbody>`;
+}
+
+function renderEarn() {
+  const L = live(), d = S.history.days, n = d.length;
+  const base = earnP === 'today' ? L.received : d.slice(n - (earnP === 'week' ? 7 : 30)).reduce((s, x) => s + x.total, 0) + (L.received - S.history.todaySoFar);
+  $('#earn').innerHTML = `
+    <div><div class="k" style="color:#0e9fb8"><i style="background:var(--c-cyan)"></i>Received</div><div class="v">${inr(base)}</div></div>
+    <div><div class="k" style="color:#c2410c"><i style="background:var(--c-coral)"></i>Stuck now</div><div class="v">${inr(L.stuck)}</div></div>
+    <div><div class="k" style="color:#6d5ce8"><i style="background:var(--c-violet)"></i>Refunded</div><div class="v">${inr(L.refunded)}</div></div>`;
+}
+
+function renderChat() {
+  if (!S) return;
+  const lang = S.merchant.lang;
+  $('#quickQs').innerHTML = quickFor(lang).map((q) => `<button class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join('');
+  const intro = { en: 'Ask me anything about your shop, in Tamil, Hindi or English. Tap the mic and speak.', ta: 'உங்கள் கடையைப் பற்றி எதையும் கேளுங்கள். மைக்கைத் தட்டி தமிழில் பேசுங்கள்.', hi: 'अपनी दुकान के बारे में कुछ भी पूछिए। माइक दबाइए और बोलिए।' }[lang];
+  const sessions = S.chatSessions || [];
+  $('#chatList').classList.toggle('hidden', !showChats);
+  $('#chat').classList.toggle('hidden', showChats && !(!document.body.classList.contains('voxa-docked') && window.innerWidth >= 900));
+  $('#chatsBtn').classList.toggle('on', showChats);
+  const fullPage = !document.body.classList.contains('voxa-docked') && window.innerWidth >= 900;
+  {
+    const row = (id, title, at, n, current) => `<div class="chat-row ${current ? 'on' : ''}" data-openchat="${id}"><div class="grow"><div class="strong">${esc(title)}</div><div class="tiny muted">${current ? 'Open now' : ago(at)} · ${n} messages</div></div><button class="btn icon quiet sm" data-delchat="${id}" aria-label="Delete chat">${i('trash-2')}</button></div>`;
+    $('#chatList').innerHTML = `<div class="chat-list-head"><b>Chats</b><button class="btn sm" data-newchat>${i('square-pen')}New chat</button></div><div class="tiny muted" style="padding:0 2px 8px">Tap a chat to open it. Save an answer to Voxa notes with the bookmark under it.</div>`
+      + (S.chat.length ? row('current', S.chat.find((m) => m.role === 'user')?.text || 'This chat', Date.now(), S.chat.length, true) : '')
+      + (sessions.length ? sessions.map((x) => row(x.id, x.title, x.at, x.messages.length, false)).join('') : (S.chat.length ? '' : '<div class="empty">No chats yet.</div>'));
+    if (showChats && !fullPage) { icons(); return; }
+  }
+  $('#chat').innerHTML = (S.chat.length ? S.chat.map((c, idx) => `<div class="msg ${c.role}">${c.thumb ? `<img class="bill-thumb" src="${esc(c.thumb)}" alt="">` : ''}${esc(c.text)}${c.role === 'assistant' ? `<span class="src">${c.source === 'claude' ? 'Voxa · Claude' : c.source === 'sarvam' ? 'Voxa · Sarvam AI' : 'Voxa · offline mode'}<button class="save-note play-btn ${V.speakingKey() === 'm' + c.at ? 'on' : ''}" data-play="${idx}" title="${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play this answer'}">${i(V.speakingKey() === 'm' + c.at ? 'square' : 'play')}${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play'}</button><button class="save-note" data-savenote="${idx}" ${c.savedNote ? 'disabled' : ''} title="Save to Voxa notes">${i(c.savedNote ? 'bookmark-check' : 'bookmark-plus')}${c.savedNote ? 'Saved' : 'Save to notes'}</button></span>` : ''}</div>${c.role === 'assistant' && c.cards ? c.cards.map(chatCard).join('') : ''}`).join('')
+    : `<div class="voxa-empty"><div class="dot-ico ai" style="width:64px;height:64px;border-radius:20px">${i('bot')}</div><h2 class="card-title">${esc(intro)}</h2></div>`) + (busy ? '<div class="msg assistant typing">Voxa is thinking…</div>' : '');
+  $('#chat').scrollTop = $('#chat').scrollHeight;
+  icons();
+}
+
+const noteIcon = { received: ['indian-rupee', 'ok'], settlement: ['landmark', 'ok'], loan: ['hand-coins', 'ok'], verified: ['shield-check', 'ai'], support: ['headphones', 'ai'], voxa: ['bot', 'ai'], double_payment: ['alert-triangle', 'bad'] };
+
+function attentionHTML(showIds) {
+  const lang = S.merchant.lang;
+  const pending = S.txns.filter((t) => t.kind === 'payment' && t.status === 'pending');
+  const doubles = S.notes.merchant.filter((n) => n.kind === 'double_payment' && !n.done);
+  return [
+    ...doubles.map((n) => `<div class="alert bad"><div class="alert-body">
+      <div class="alert-title">${i('alert-triangle')}Paid twice</div>
+      <div><div style="font-weight:500">${esc(n.text)}</div>${lang !== 'en' ? `<div class="translation">${esc(n.english)}</div>` : ''}</div>
+      <div><button class="btn danger" data-act="refund" data-id="${n.refId}">${i('undo-2')}${esc(n.action ? n.action.label : 'Return the money')}</button></div></div></div>`),
+    ...pending.map((t) => {
+      const tk = S.tickets.find((k) => k.refId === t.id);
+      const line = t.voxa === 'checking' && !tk ? `<div class="note-plain ai row">${i('loader')}Voxa is checking this payment with the bank…</div>`
+        : tk ? `<div class="note-plain ai row top">${i('bot')}<span>Voxa opened ticket <b>${esc(tk.id)}</b> and filed the bank complaint. It resolves by <b>${esc(tk.deadline || t.deadline)}</b>.</span></div>` : '';
+      return `<div class="alert"><div class="alert-body">
+        <div class="row between top"><div><div class="alert-title">${i('hourglass')}Payment stuck between banks</div>
+          <div class="amt lg" style="margin-top:6px">${inr(t.amount)}</div><div class="small muted">from ${esc(t.fromName)} · ${time(t.createdAt)}${showIds ? ` · <span class="mono">UPI ref ${esc(t.utr)}</span>` : ''}</div></div>${badge('pending')}</div>
+        ${route(t)}
+        ${line}
+        <div class="row wrap">
+          <button class="btn primary" data-act="verify" data-id="${t.id}">${i('shield-check')}Customer says paid: verify</button>
+          ${t.cashTaken ? `<span class="tag info">${i('banknote')}Cash taken · Voxa watching UPI</span>` : `<button class="btn" data-act="cash" data-id="${t.id}">${i('banknote')}Took cash instead</button>`}
+        </div></div></div>`;
+    }),
+  ].join('');
+}
+
+// today's payments: the live ones from the demo plus the bills that came in before it started
+function todayAll() {
+  return [...S.txns, ...(S.history.todayList || [])].sort((a, b) => b.createdAt - a.createdAt);
+}
+function paymentRows(list) {
+  return list.length ? list.map((t) => `
+    <div class="r"><div class="dot-ico ${t.kind === 'refund' ? 'warn' : t.status === 'success' ? 'ok' : t.status === 'pending' ? 'warn' : ''}">${i(t.kind === 'refund' ? 'undo-2' : 'indian-rupee')}</div>
+      <div class="grow"><div class="strong" style="font-size:14px">${t.kind === 'refund' ? 'Refund to ' + esc(t.toName) : esc(t.fromName)}</div><div class="tiny muted">${time(t.createdAt)}${t.discount ? ' · offer used' : ''}</div></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div class="amt">${t.kind === 'refund' ? '−' : '+'}${inr(t.amount)}</div>${badge(t.status)}</div></div>`).join('')
+    : `<div class="empty">No live payments yet. ${S.history.todayBills} bills came in earlier today (${inr(S.history.todaySoFar)}).</div>`;
+}
+
+function render() {
+  const m = S.merchant, lang = m.lang, L = live();
+  const d = S.history.days, n = d.length;
+  V.setLangUI(lang);
+  if (window.VT) VT.set(lang === 'ta' ? 'ta' : 'en');
+  $('#quickQs').innerHTML = quickFor(lang).map((q) => `<button class="chip" data-q="${esc(q)}">${esc(q)}</button>`).join('');
+  V.ready().then((c) => { $('#aiMode').textContent = (c.ai ? `Brain: ${c.brainName} · ${c.model}` : 'Brain: offline rules') + (c.sarvam ? ' · Voice: Sarvam' : ' · Voice: browser'); });
+  renderPeriodSelect();
+
+  // KPI row
+  const yest = d[n - 1];
+  const avgBill = Math.round(L.received / L.bills), avgBill30 = Math.round(d.slice(n - 30).reduce((s, x) => s + x.total, 0) / d.slice(n - 30).reduce((s, x) => s + x.count, 0));
+  const diff = (a, b, money) => { const up = a >= b; return `<span class="${up ? 'up' : 'down'}" style="display:inline-flex;align-items:center;gap:3px">${i(up ? 'arrow-up' : 'arrow-down')}<b>${money ? inr(Math.abs(a - b)) : Math.abs(a - b)}</b></span>`; };
+  const week = d.slice(n - 7).reduce((s, x) => s + x.total, 0), prevW = d.slice(n - 14, n - 7).reduce((s, x) => s + x.total, 0);
+  const month = d.slice(n - 30).reduce((s, x) => s + x.total, 0);
+  const ch = Math.round(((week - prevW) / prevW) * 100);
+  const PM = periodModel();
+  $('#kpis').innerHTML = `
+    <div class="kpi"><div class="l">Today's sales</div><div class="v">${inr(L.received)}</div><div class="d">${diff(L.received, Math.round(yest.total * 0.55), true)} on this time yesterday</div></div>
+    <div class="kpi"><div class="l">Today's bills</div><div class="v">${L.bills}</div><div class="d">${diff(L.bills, Math.round(yest.count * 0.55), false)} on this time yesterday</div></div>
+    <div class="kpi"><div class="l">Average bill</div><div class="v">${inr(avgBill)}</div><div class="d">${diff(avgBill, avgBill30, true)} on the 30-day average</div></div>
+    <div class="hero-kpi">
+      <div class="it"><div class="sq" style="background:#22c3e6">${i('calendar-days')}</div><div><div class="l">${esc(PM.name)}</div><div class="v">${inr(PM.total)}</div></div></div>
+      <div class="it"><div class="sq" style="background:#8b7bff">${i('trending-up')}</div><div><div class="l">vs ${PM.unit === 'month' ? 'last year' : 'period before'}</div><div class="v">${PM.change >= 0 ? '+' : ''}${PM.change}%</div></div></div>
+      <div class="it"><div class="sq" style="background:#f5b819">${i('landmark')}</div><div><div class="l">Settles tonight</div><div class="v">${inr(m.unsettled)}</div></div></div>
+      <div class="it"><div class="sq" style="background:#ff7a6b">${i('wallet')}</div><div><div class="l">Bank balance</div><div class="v">${inr(m.bankBalance)}</div></div></div>
+    </div>`;
+
+  $('#attention').innerHTML = attentionHTML(false);
+  $('#attention2').innerHTML = attentionHTML(true);
+  const pendingCount = L.pays.filter((t) => t.status === 'pending').length;
+  V.setCount('payments', pendingCount ? pendingCount + ' stuck' : L.pays.length);
+  V.setBell(pendingCount > 0 || S.notes.merchant.some((x) => x.kind === 'double_payment' && !x.done));
+
+  renderDashboardCharts();
+
+  const hr = S.history.hourly;
+  const sum = (a, b) => hr.filter((x) => x.hour >= a && x.hour < b).reduce((s, x) => s + x.avg, 0);
+  $('#donutTime').innerHTML = donut([
+    { label: 'Morning, 7 AM–12', v: sum(7, 12), color: C.cyan },
+    { label: 'Afternoon, 12–5 PM', v: sum(12, 17), color: C.coral },
+    { label: 'Evening, 5–11 PM', v: sum(17, 23), color: C.violet },
+  ], inr(S.history.avg30), 'a normal day');
+  $('#donutToday').innerHTML = donut([
+    { label: 'Received', v: L.received, color: C.cyan },
+    { label: 'Stuck', v: L.stuck, color: C.coral },
+    { label: 'Refunded', v: L.refunded, color: C.violet },
+  ], inr(L.received + L.stuck), 'paid to you today');
+
+  renderEarn();
+  $('#payments').innerHTML = paymentRows(S.txns.slice(0, 6));
+  {
+    const all = todayAll();
+    const st = { success: 'Success', pending: 'Pending', failed: 'Failed', reversed: 'Refunded', processing: 'On its way', awaiting_bank: 'On its way' };
+    $('#recent5').innerHTML = all.slice(0, 5).map((t) => `
+      <div class="rp ${t.status}"><div class="row between"><div class="dot-ico ${t.kind === 'refund' ? 'warn' : t.status === 'success' ? 'ok' : t.status === 'pending' ? 'warn' : ''}">${i(t.kind === 'refund' ? 'undo-2' : 'indian-rupee')}</div>${badge(t.status)}</div>
+        <div class="amt lg">${t.kind === 'refund' ? '−' : ''}${inr(t.amount)}</div>
+        <div class="small strong" data-noi18n>${t.kind === 'refund' ? 'Refund to ' + esc(t.toName) : esc(t.fromName)}</div><div class="tiny muted">${time(t.createdAt)}</div></div>`).join('');
+    const okSum = all.filter((t) => t.kind === 'payment' && t.status === 'success').reduce((s, t) => s + t.amount, 0);
+    $('#allCount').textContent = `${all.length} payments · ${inr(okSum)}`;
+    $('#allPayments').innerHTML = `<thead><tr><th>Time</th><th>From</th><th class="r">Amount</th><th>Status</th></tr></thead><tbody>${all.map((t) => `
+      <tr class="${t.status === 'pending' ? 'stuck' : ''}"><td>${time(t.createdAt)}</td><td data-noi18n>${t.kind === 'refund' ? 'Refund to ' + esc(t.toName) : esc(t.fromName)}</td><td class="r strong">${t.kind === 'refund' ? '−' : ''}${inr(t.amount)}</td><td>${badge(t.status, st[t.status])}</td></tr>`).join('')}</tbody>`;
+  }
+  {
+    const pays = todayAll().filter((t) => t.kind === 'payment');
+    const sum = (list) => list.reduce((a, t) => a + t.amount, 0);
+    const ok = pays.filter((t) => t.status === 'success'), stuck = pays.filter((t) => t.status === 'pending');
+    const back = S.txns.filter((t) => t.kind === 'refund' || t.status === 'reversed'), failed = pays.filter((t) => t.status === 'failed');
+    const card = (label, list, color, icon, note) => `<div class="kpi"><div class="l">${label}</div><div class="v" style="color:${color}">${inr(sum(list))}</div><div class="d">${i(icon)}${list.length} ${list.length === 1 ? 'payment' : 'payments'}${note ? ' · ' + note : ''}</div></div>`;
+    $('#payKpis').innerHTML = card('Received today', ok, 'var(--ok)', 'circle-check', '')
+      + card('Stuck now', stuck, '#c2410c', 'hourglass', stuck.length ? 'Voxa is following up' : '')
+      + card('Refunded', back, 'var(--violet)', 'undo-2', '')
+      + card('Failed', failed, 'var(--bad)', 'circle-x', failed.length ? 'no money moved' : '');
+  }
+
+  const notes = S.notes.merchant.filter((x) => x.kind !== 'double_payment' || x.done).slice(0, 6);
+  $('#notes').innerHTML = notes.length ? notes.map((x) => {
+    const [ic, tone] = noteIcon[x.kind] || ['bell', ''];
+    return `<div class="r top"><div class="dot-ico ${tone}">${i(ic)}</div>
+      <div class="grow"><div style="font-size:14px">${esc(x.text)}</div>${lang !== 'en' && x.english && x.english !== x.text ? `<div class="translation">${esc(x.english)}</div>` : ''}<div class="tiny muted" style="margin-top:4px">${ago(x.at)}</div></div>
+      <button class="btn icon quiet sm" data-act="replay" data-id="${x.id}" aria-label="Play aloud">${i('volume-2')}</button></div>`;
+  }).join('') : '<div class="empty">Voxa posts payment alerts, fixes and tips here.</div>';
+
+  // insights: everything follows the period filter
+  renderInsights();
+
+  // loan
+  if (pane === 'loan') { if (!lp) loadPlan(); else if (loanView === 'calc') renderLoan(); if (!prof) loadProfile(); else renderMine(); }
+  if (pane === 'notes') renderNotes();
+  if (pane === 'customers') renderCustomers();
+  if (pane === 'whatsapp') renderWhatsapp();
+  { const c = S.crm; if (c) V.setCount && V.setCount('customers', c.customers.reduce((n, cu) => n + cu.udhar.filter((e) => e.status === 'pending').length, 0)); }
+  V.setCount('notes', (S.board || []).length);
+  if (pane === 'costs') renderCosts();
+  $('#settlements').innerHTML = S.settlements.length ? S.settlements.map((s) => `
+    <div class="r"><div class="dot-ico ${s.status === 'held' ? 'warn' : 'ok'}">${i('landmark')}</div><div class="grow"><div class="strong" style="font-size:14px">${esc(s.id)} · ${time(s.at)}</div>
+      <div class="tiny muted">Collected ${inr(s.gross)}${s.deduction ? ` · loan ${inr(s.deduction)}${s.deduction !== s.expectedDeduction ? ` (should be ${inr(s.expectedDeduction)})` : ''}` : ''}${s.corrected ? ' · corrected' : ''}</div></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div class="amt">${inr(s.net)}</div>${badge(s.status)}</div></div>`).join('') : '<div class="empty">No settlement yet today. It runs in the evening.</div>';
+
+  renderChat();
+
+  if (seen === null) seen = new Set(S.notes.merchant.map((x) => x.id));
+  for (const x of [...S.notes.merchant].reverse()) {
+    if (seen.has(x.id)) continue;
+    seen.add(x.id);
+    if (soundOn && x.speak) speak(x.text, lang);
+    if (!soundOn && x.speak) toast((x.english || x.text).slice(0, 110));
+  }
+}
+
+let firstState = true;
+subscribe((state) => {
+  S = state;
+  if (firstState) { firstState = false; if (S.merchant.lang !== 'en') { S.merchant.lang = 'en'; api('/api/merchant/lang', { lang: 'en' }).catch(() => {}); } }
+  render();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Voxa Support</title>
+<meta name="theme-color" content="#1d1640">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Noto+Sans+Tamil:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/app.css">
+<style>.page { max-width: 1440px; } .shell-top, .screen-nav { max-width: 1440px; }</style>
+</head>
+<body data-role="support">
+<header class="shell" data-title="Voxa Support" data-sub="Agent console" data-user="Naveen Roshan" data-user-role="Support agent"></header>
+
+<main class="page stack" style="gap:20px">
+  <div class="page-head" style="margin-bottom:0"><div><h1>Support tickets</h1><div class="crumb">Home / Voxa Support / Tickets</div></div>
+    <div class="page-actions"><button class="btn" id="nextDay" title="Demo clock: pretend a day has passed"><i data-lucide="sunrise"></i>1 day passes</button><span class="tag" id="aiStatus"></span></div></div>
+  <div class="kpis five" id="kpis"></div>
+
+  <section class="panel">
+    <div class="panel-head"><h2 id="listTitle">All tickets</h2><span class="hint" id="listHint"></span></div>
+    <div class="table-wrap" style="border-radius:0 0 14px 14px;margin-top:8px"><table class="table tix" id="queue"></table></div>
+  </section>
+
+  <details class="panel logbox">
+    <summary class="panel-head"><h2>Voxa agent log</h2><span class="hint">every tool call · tap to open</span></summary>
+    <div class="log" id="log" style="margin-top:8px"></div>
+  </details>
+</main>
+
+<div class="drawer-bg hidden" id="drawerBg"></div>
+<div class="tdrawer hidden" id="drawer" role="dialog" aria-label="Ticket details">
+  <div class="tdrawer-top"><span class="strong" id="drawerId"></span><button class="btn icon quiet" id="drawerClose" aria-label="Close"><i data-lucide="x"></i></button></div>
+  <div id="detail"></div>
+  <div id="replyBox" class="hidden">
+    <hr class="divider">
+    <div class="panel-body stack">
+      <textarea class="input" id="replyText" rows="2" placeholder="Reply to Murugan. It appears in his app."></textarea>
+      <div class="row"><button class="btn" id="replyBtn"><i data-lucide="send"></i>Send reply</button><button class="btn quiet" id="closeBtn">Close ticket</button></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .kpis.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  @media (max-width: 1100px) { .kpis.five { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .kpis.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .kpi.pick { cursor: pointer; background: #fff; text-align: left; font: inherit; border: 1px solid var(--line); transition: border-color 150ms ease, box-shadow 150ms ease; }
+  .kpi.pick:hover { border-color: #b9c8ff; }
+  .kpi.pick.on { border-color: #2f45d9; box-shadow: 0 0 0 3px rgba(47, 69, 217, 0.12); }
+  .tix tbody tr { cursor: pointer; }
+  .tix tbody tr:hover td { background: var(--surface-2); }
+  .tix td.did { color: var(--ink-3); font-size: 12.5px; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tix td { white-space: nowrap; }
+  .logbox summary { cursor: pointer; list-style: none; }
+  .logbox summary::-webkit-details-marker { display: none; }
+  .drawer-bg { position: fixed; inset: 0; background: rgba(11, 27, 51, 0.32); z-index: 70; }
+  .tdrawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100vw); background: #fff; z-index: 71; overflow-y: auto; box-shadow: -24px 0 60px -20px rgba(20, 30, 90, 0.45); animation: slidein 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .tdrawer-top { position: sticky; top: 0; background: #fff; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); z-index: 1; }
+  @keyframes slidein { from { transform: translateX(40px); opacity: 0; } }
+  .did-list { display: flex; flex-direction: column; gap: 8px; }
+  .did-list div { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; }
+  .did-list svg { width: 16px; height: 16px; color: var(--ok); flex: none; margin-top: 2px; }
+  .summary.brief { border: 2px solid #2f45d9; background: #f5f7ff; }
+  .summary.brief .summary-h { display: flex; align-items: center; gap: 8px; }
+  .brief-text { white-space: pre-line; font-size: 14px; line-height: 1.55; }
+</style>
+
+<script src="/vendor/lucide.js"></script>
+<script src="/js/common.js"></script>
+<script>
+const { inr, esc, $, $$, i, api, subscribe, badge, route, ago, time, toast } = V;
+let S, filter = 'all', selected = null;
+
+V.ready().then((c) => { $('#aiStatus').className = 'tag ' + (c.ai ? 'claude' : ''); $('#aiStatus').textContent = c.ai ? `Agent: ${c.brainName} · ${c.model}` : 'Agent: offline rules'; });
+$('#nextDay').onclick = () => api('/api/sim/nextday', {}).then((r) => toast(r.moved ? `Day ${r.day}: ${r.moved} stuck payment the bank did not fix is now with you` : `Day ${r.day}: nothing overdue`));
+$('#kpis').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (!b) return; filter = filter === b.dataset.f ? 'all' : b.dataset.f; render(); });
+$('#queue').addEventListener('click', (e) => { const r = e.target.closest('[data-t]'); if (r) { selected = r.dataset.t; openDrawer(true); render(); } });
+const openDrawer = (on) => { $('#drawer').classList.toggle('hidden', !on); $('#drawerBg').classList.toggle('hidden', !on); if (!on) selected = null; };
+$('#drawerClose').onclick = () => openDrawer(false);
+$('#drawerBg').onclick = () => openDrawer(false);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') openDrawer(false); });
+const act = (action, extra = {}) => api('/api/support/action', { ticketId: selected, action, ...extra });
+$('#replyBtn').onclick = () => act('reply', { text: $('#replyText').value }).then(() => { $('#replyText').value = ''; toast('Reply sent to Murugan.'); });
+$('#closeBtn').onclick = () => act('close', { text: 'Closed by Naveen.' });
+$('#detail').addEventListener('click', (e) => { const r = e.target.closest('[data-brief]'); if (r) { r.disabled = true; api('/api/support/brief', { ticketId: selected }).then(() => toast('Brief updated.')); return; } const b = e.target.closest('[data-a]'); if (b) { b.disabled = true; act(b.dataset.a).then(() => toast('Done.')).catch(() => (b.disabled = false)); } });
+
+const TYPE = { stuck_payment: 'Stuck payment', settlement_hold: 'Settlement on hold', wrong_deduction: 'Wrong loan deduction', merchant_report: 'Reported by Murugan', customer_report: 'Reported by customer', other: 'Other' };
+const TYPE_ICON = { stuck_payment: 'hourglass', settlement_hold: 'pause', wrong_deduction: 'hand-coins', merchant_report: 'message-square-warning', customer_report: 'flag', other: 'file-text' };
+// which group a ticket belongs to
+const group = (t) => t.status === 'voxa' ? 'waiting' : t.status === 'needs_human' ? 'human' : t.escalated ? 'person' : 'alone';
+const GROUPS = {
+  waiting: ['Waiting on bank', 'hourglass', 'Voxa is watching, the bank has 1 day'],
+  human: ['Needs a person', 'user-round', '₹10,000+, holds, deductions, overdue'],
+  alone: ['Closed by Voxa alone', 'bot', 'no person touched it'],
+  person: ['Closed with a person', 'user-check', 'a person helped'],
+};
+// what Voxa itself did on a ticket, in plain words
+const voxaSteps = (t) => t.timeline.filter((x) => x.who === 'Voxa').map((x) => x.text);
+
+function facts(t, txn, st) {
+  const f = [];
+  if (txn) f.push(['Amount', inr(txn.amount)], ['Payment status', txn.status], ['UTR', txn.utr], ['From → to', `${txn.fromName} → ${txn.toName}`],
+    ['Debited at', txn.debitedAt ? time(txn.debitedAt) : 'Not debited'], ['Bank deadline (T+5)', t.deadline || txn.deadline || 'None'], ['Cash at counter', txn.cashTaken ? 'Yes' : 'No']);
+  if (st) {
+    f.push(['Settlement', st.id], ['Collected', inr(st.gross)], ['Loan deduction', inr(st.deduction)], ['Should be (4%)', inr(st.expectedDeduction)], ['Net to bank', inr(st.net)], ['Status', st.status + (st.corrected ? ', corrected' : '')]);
+    if (st.holdReason) f.push(['Hold reason', st.holdReason], ['Same PAN', 'Yes']);
+  }
+  return f;
+}
+
+function actions(t, txn, st) {
+  if (t.status === 'resolved') return '';
+  const out = [];
+  if (t.type === 'stuck_payment' && txn && txn.status === 'pending') out.push(`<button class="btn primary" data-a="chase_bank">${i('phone-call')}Chase bank to resolve today</button>`);
+  if (t.type === 'settlement_hold' && st && st.status === 'held') out.push(`<button class="btn ok" data-a="release_settlement">${i('check')}Release ${inr(st.net)} to Murugan</button>`);
+  if (t.type === 'wrong_deduction' && st && !st.corrected) out.push(`<button class="btn ok" data-a="refund_deduction">${i('undo-2')}Refund extra ${inr(st.deduction - st.expectedDeduction)}</button>`);
+  if (t.assignee !== 'Naveen') out.push(`<button class="btn" data-a="take">${i('user-round')}Take ticket</button>`);
+  return `<div class="row wrap">${out.join('')}</div>`;
+}
+
+const SUGGEST = {
+  stuck_payment: 'The bank did not fix this on its own. Chase the bank today, well before the T+5 deadline.',
+  settlement_hold: 'Release it. Both names are on the same PAN, so this is only a KYC name update.',
+  wrong_deduction: 'Refund the extra amount. The agreed rule is 4% of the day’s collections.',
+  merchant_report: 'Read Voxa’s brief, check the payments it names, then reply to Murugan from here.',
+  customer_report: 'Read Voxa’s brief: it lists every payment from this customer today and what the shop already did.',
+};
+
+function render() {
+  const all = S.tickets;
+  const count = (g) => all.filter((t) => group(t) === g).length;
+  $('#kpis').innerHTML = `<button class="kpi pick ${filter === 'all' ? 'on' : ''}" data-f="all"><div class="l">All tickets</div><div class="v">${all.length}</div><div class="d">${i('inbox')}today</div></button>`
+    + Object.entries(GROUPS).map(([g, [label, icon, note]]) => `<button class="kpi pick ${filter === g ? 'on' : ''}" data-f="${g}"><div class="l">${label}</div><div class="v ${g === 'human' && count(g) ? 'down' : g === 'alone' && count(g) ? 'up' : ''}">${count(g)}</div><div class="d">${i(icon)}${note}</div></button>`).join('');
+
+  const list = filter === 'all' ? all : all.filter((t) => group(t) === filter);
+  $('#listTitle').textContent = filter === 'all' ? 'All tickets' : GROUPS[filter][0];
+  $('#listHint').textContent = filter === 'alone' ? 'what Voxa did, start to finish' : 'tap a ticket to open it';
+  $('#queue').innerHTML = list.length ? `<thead><tr><th>Ticket</th><th>Problem</th><th class="r">Amount</th><th>Status</th><th>Opened</th><th>What Voxa did</th></tr></thead><tbody>${list.map((t) => {
+      const txn = S.txns.find((x) => x.id === t.refId);
+      const st = S.settlements.find((x) => x.id === t.refId || x.id + '-D' === t.refId);
+      const amt = txn ? txn.amount : st ? (t.type === 'wrong_deduction' ? st.deduction - st.expectedDeduction : st.net) : null;
+      const steps = voxaSteps(t);
+      const g = group(t);
+      return `<tr data-t="${t.id}"><td class="mono strong">${esc(t.id)}</td><td>${esc(TYPE[t.type] || t.type)}</td><td class="r strong">${amt != null ? inr(amt) : '—'}</td>
+        <td>${badge(g === 'alone' || g === 'person' ? 'resolved' : t.status, GROUPS[g][0])}</td><td class="muted">${ago(t.createdAt)}</td>
+        <td class="did" title="${esc(steps.join(' → '))}">${steps.length} steps · ${esc(steps[steps.length - 1] || '')}</td></tr>`;
+    }).join('')}</tbody>`
+    : `<tbody><tr><td class="muted" style="padding:20px 16px">${filter === 'human' ? 'Nothing needs you. Voxa is handling the rest.' : all.length ? 'No tickets here.' : 'No tickets yet. Time out a payment on Voxa Bank to see Voxa open one.'}</td></tr></tbody>`;
+
+  const t = all.find((x) => x.id === selected);
+  $('#replyBox').classList.toggle('hidden', !t || t.status === 'resolved');
+  if (t) {
+    const txn = S.txns.find((x) => x.id === t.refId);
+    const st = S.settlements.find((x) => x.id === t.refId || x.id + '-D' === t.refId);
+    const g = group(t);
+    $('#drawerId').textContent = t.id;
+    $('#detail').innerHTML = `
+      <div class="panel-body stack" style="gap:16px">
+        <div class="row between top wrap">
+          <div class="row top"><div class="dot-ico ${g === 'alone' || g === 'person' ? 'ok' : g === 'human' ? 'bad' : 'warn'}">${i(TYPE_ICON[t.type] || 'file-text')}</div>
+            <div><h1 style="font-size:20px">${esc(t.title)}</h1><div class="small muted">${esc(TYPE[t.type] || t.type)} · opened ${time(t.createdAt)}${t.resolvedAt ? ' · closed ' + time(t.resolvedAt) : ''}</div></div></div>
+          <div class="row wrap">${badge(g === 'alone' || g === 'person' ? 'resolved' : t.status, GROUPS[g][0])}${t.source === 'claude' || t.source === 'sarvam' ? `<span class="tag claude">${i('sparkles')}${t.source === 'sarvam' ? 'Sarvam AI' : 'Claude'}</span>` : `<span class="tag">${i('cpu')}Rules</span>`}</div>
+        </div>
+        ${t.brief ? `<div class="summary brief"><div class="summary-h">${i('sparkles')}Voxa’s brief for you<span class="tiny muted" style="margin-left:auto">${ago(t.brief.at)} · ${esc(t.brief.source)}</span><button class="btn sm quiet" data-brief="1">${i('refresh-cw')}Refresh</button></div><div class="brief-text">${esc(t.brief.text)}</div></div>` : (t.status === 'needs_human' ? `<div class="summary brief muted small">${i('loader')} Voxa is writing a brief…</div>` : '')}
+        <div class="summary"><div class="summary-h">${i('bot')}What Voxa did</div><div class="did-list">${voxaSteps(t).map((x) => `<div>${i('check')}<span>${esc(x)}</span></div>`).join('')}</div></div>
+        ${t.status === 'needs_human' && SUGGEST[t.type] ? `<div class="note-plain row top">${i('lightbulb')}<span><b>Suggested:</b> ${esc(SUGGEST[t.type])}</span></div>` : ''}
+        ${actions(t, txn, st)}
+        <details><summary class="small strong" style="cursor:pointer">Voxa's summary for support</summary><p class="small ink-2" style="margin-top:6px">${esc(t.summary)}</p></details>
+        ${txn ? route(txn) : ''}
+        <div class="facts">${facts(t, txn, st).map(([l, v]) => `<div><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div></div>`).join('')}</div>
+        <div><h3 style="margin-bottom:6px">Full timeline</h3><div class="timeline">${t.timeline.map((x) => `<div class="tl"><div class="when">${time(x.at)}</div><div><span class="who">${esc(x.who)}</span>${esc(x.text)}</div></div>`).join('')}</div></div>
+      </div>`;
+  }
+
+  const ICON = { tool: 'wrench', event: 'zap', model: 'sparkles', final: 'message-square', fallback: 'life-buoy' };
+  $('#log').innerHTML = S.agentLog.length ? S.agentLog.slice(0, 80).map((l) => `
+    <div class="log-item">
+      <div class="row between"><span class="row" style="gap:7px">${i(ICON[l.type] || 'dot', 'sm')}<span class="name">${esc(l.type === 'tool' ? l.name + '()' : l.name)}</span><span class="tiny muted">${esc(l.agent)}</span></span>
+      <span class="row" style="gap:6px"><span class="tag ${l.source === 'claude' || l.source === 'sarvam' ? 'claude' : ''}">${esc(l.source)}</span>${l.ms ? `<span class="tiny muted num">${l.ms} ms</span>` : ''}</span></div>
+      ${l.input ? `<pre>in  ${esc(l.input)}</pre>` : ''}${l.output ? `<pre>out ${esc(l.output)}</pre>` : ''}
+    </div>`).join('') : '<div class="empty">Every step the Voxa agent takes shows up here, with the tool it called and what came back.</div>';
+  V.icons();
+}
+subscribe((s) => { S = s; render(); });
+</script>
+</body>
+</html>

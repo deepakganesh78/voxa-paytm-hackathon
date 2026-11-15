@@ -1,0 +1,20 @@
+{
+  "name": "voxa-sandbox",
+  "version": "1.0.0",
+  "description": "Voxa demo: Voxa Pay, Voxa Bank and Voxa Support with fake money and the Voxa AI accountant.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "express": "^4.21.2",
+    "lucide": "^0.460.0"
+  }
+}
