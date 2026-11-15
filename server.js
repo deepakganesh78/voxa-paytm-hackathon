@@ -121,6 +121,16 @@ app.post('/api/merchant/chat', route(async (b) => {
   return A.chat(text, b.heard, { context });
 }));
 // Home briefing and actions Voxa proposed: nothing changes until the merchant confirms
+app.get('/api/card', async (req, res) => {
+  await E.syncShared();
+  const q = req.query;
+  try {
+    const c = q.type === 'sales' ? A.salesCard(q.range, q.group_by) : q.type === 'profit' ? A.profitCard(q.range) : q.type === 'customers' ? A.customersCard(q.filter)
+      : q.type === 'payments' ? A.paymentsCard({ status: q.status, range: q.range }) : q.type === 'loan_offer' ? A.loanOfferCard(q.amount, q.months) : null;
+    if (!c) return res.status(404).json({ error: 'Unknown card' });
+    res.json(c);
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
 app.get('/api/merchant/briefing', async (req, res) => { await E.syncShared(); res.json(briefing(req.query.lang)); });
 app.post('/api/merchant/propose', route((b) => {
   const a = ACT.propose(String(b.type || ''), b.params || {}, { source: 'you', said: '' });

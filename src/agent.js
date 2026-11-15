@@ -1228,13 +1228,13 @@ const FAST = {
     hi: (d) => `आपका लोन चल रहा है: ${rupee(d.active.outstanding)} बाकी, ${d.active.finish} तक हर महीने ${rupee(d.active.emi)}।`,
   },
   remind: {
-    en: (n, t) => `${n} customer${n > 1 ? 's' : ''} owe ${rupee(t)}. Check the messages and tap Send.`,
+    en: (n, t) => `${n} customer${n > 1 ? 's owe' : ' owes'} ${rupee(t)}. Check the messages and tap Send.`,
     ta: (n, t) => `${n} வாடிக்கையாளர்கள் ${rupee(t)} தர வேண்டும். செய்திகளைப் பார்த்து அனுப்பு அழுத்துங்கள்.`,
     hi: (n, t) => `${n} ग्राहकों पर ${rupee(t)} बाकी है। मैसेज देखकर भेजें दबाइए।`,
   },
   nobodyOwes: { en: () => 'Nobody owes you any Udhaar right now.', ta: () => 'இப்போது யாரும் உதார் பாக்கி வைக்கவில்லை.', hi: () => 'अभी किसी पर कोई उधार बाकी नहीं है।' },
   owes: {
-    en: (d) => `${d.count} customer${d.count > 1 ? 's' : ''} owe you ${rupee(d.totalDue)}; ${d.items[0].name} owes the most, ${rupee(d.items[0].amount)}.`,
+    en: (d) => `${d.count} customer${d.count > 1 ? 's owe' : ' owes'} you ${rupee(d.totalDue)}; ${d.items[0].name} owes the most, ${rupee(d.items[0].amount)}.`,
     ta: (d) => `${d.count} வாடிக்கையாளர்கள் ${rupee(d.totalDue)} தர வேண்டும்; அதிகம் ${d.items[0].name}, ${rupee(d.items[0].amount)}.`,
     hi: (d) => `${d.count} ग्राहकों पर ${rupee(d.totalDue)} बाकी है; सबसे ज़्यादा ${d.items[0].name} पर, ${rupee(d.items[0].amount)}।`,
   },
