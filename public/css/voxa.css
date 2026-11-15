@@ -307,3 +307,12 @@ body[data-theme='dark'] .toast { background: #eef1f8; color: #111526; }
 body.cp-full #copilot .voxa-composer { padding-inline: max(24px, calc((100% - 760px) / 2)); }
 #copilot .voxa-composer .input { min-height: 48px; border-radius: 14px; }
 .pane-focus .vc-open { display: none; }
+
+/* Home has its own ask bar: no side panel there (asking opens the full conversation view) */
+@media (min-width: 900px) {
+  body.pane-home:not(.cp-full) .copilot { display: none !important; }
+  body.pane-home:not(.cp-full) { padding-right: 0 !important; }
+}
+.askbar-mic.on { background: #dc2626; animation: mic-pulse 1.2s ease-in-out infinite; }
+@keyframes mic-pulse { 50% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0.18); } }
+#copilot .voxa-close { display: grid !important; }

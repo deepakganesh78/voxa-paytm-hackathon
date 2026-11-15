@@ -148,7 +148,7 @@
     const b = document.createElement('button');
     b.className = 'icon-btn cp-toggle'; b.id = 'cpToggle'; b.setAttribute('aria-label', 'Ask Voxa'); b.title = 'Ask Voxa (Ctrl+K)';
     b.innerHTML = i('sparkles');
-    b.onclick = () => (body.classList.contains('cp-open') ? closeCopilot() : openCopilot());
+    b.onclick = () => (current.screen === 'home' && !isPhone() ? openFull() : body.classList.contains('cp-open') ? closeCopilot() : openCopilot());
     right.prepend(b);
     icons();
     return true;
@@ -262,8 +262,22 @@
       icons();
     } catch { /* keep what is shown */ } finally { briefBusy = false; }
   }
-  $('#askBar').addEventListener('submit', (e) => { e.preventDefault(); const v = $('#homeInput').value.trim(); if (!v) return; $('#homeInput').value = ''; openCopilot(true); ask(v); });
-  $('#homeMic').onclick = () => { openCopilot(true); $('#mic').click(); };
+  $('#askBar').addEventListener('submit', (e) => { e.preventDefault(); const v = $('#homeInput').value.trim(); if (!v) return; $('#homeInput').value = ''; if (isPhone()) openCopilot(true); else openFull(); ask(v); });
+  // the hero mic types what he said into the hero box (not the side panel); hands-free sends it straight away
+  let homeRec = null;
+  $('#homeMic').onclick = () => {
+    if (homeRec) { homeRec.stop(); return; }
+    const mic = $('#homeMic');
+    mic.classList.add('on');
+    let ended = false;
+    const r = V.listen(L(), (text, heard) => {
+      if (VS.handsFree) { if (isPhone()) openCopilot(true); else openFull(); ask(text, { voice: true, heard }); return; }
+      const box = $('#homeInput');
+      box.value = (box.value ? box.value + ' ' : '') + text;
+      box.focus();
+    }, () => { ended = true; homeRec = null; mic.classList.remove('on'); }, (on) => mic.classList.toggle('on', on), { autoStop: true });
+    if (!ended) homeRec = r;
+  };
 
   // ---------- Settings ----------
   const ST = {
