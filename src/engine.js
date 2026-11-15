@@ -62,6 +62,8 @@ function initial() {
     history: seed,
     chat: [],
     chatSessions: [],
+    // changes Voxa proposed in the chat; nothing happens until the merchant confirms
+    actions: [],
     // customers who joined on WhatsApp (loyalty card, Udhar) and Murugan's WhatsApp settings
     crm: {
       customers: [],
@@ -725,7 +727,11 @@ export function saveAnswerToNotes(index) {
   const m = S.chat[index];
   if (!m || m.role !== 'assistant') throw new Error('Pick one of Voxa\'s answers.');
   const q = S.chat.slice(0, index).reverse().find((x) => x.role === 'user');
-  const card = (m.cards || []).find((c) => ['sales', 'costs', 'loan', 'payments'].includes(c.type)) || null;
+  const raw = (m.cards || []).find((c) => ['sales', 'costs', 'loan', 'payments', 'profit', 'loan_offer'].includes(c.type)) || null;
+  // the chat's answer cards become the notes page's live dashboards
+  const PERIOD = { today: '7', yesterday: '7', this_week: '7', last_week: '7', last_7_days: '7', this_month: '30', last_month: '30', last_30_days: '30', last_90_days: '90', last_6_months: 'm6', last_12_months: 'm12' };
+  const card = !raw ? null : raw.type === 'profit' ? { type: 'costs' } : raw.type === 'loan_offer' ? { type: 'loan', amount: raw.data.plan.amount, months: raw.data.plan.months }
+    : raw.type === 'sales' && raw.range ? { type: 'sales', period: PERIOD[raw.range.key] || '7' } : raw.type === 'payments' ? { type: 'payments' } : raw;
   m.savedNote = true;
   return addBoardNote({ title: q ? String(q.text).replace(/^📷 /, '').slice(0, 70) : 'From Voxa', text: String(m.text).slice(0, 600), tag: card ? 'dashboard' : 'note', source: 'you', card });
 }
@@ -823,6 +829,83 @@ export function profitSummary(month = monthKey()) {
   return {
     month, monthName, revenue, paytmSales, cashSales, daysCounted: days.length + (isNow ? 1 : 0), costs, costTotal, loanPaid, left,
     margin: revenue ? Math.round((left / revenue) * 1000) / 10 : 0, hasStock: !!byCat.stock, entries: list.length,
+  };
+}
+
+// ---------- any date range (from ranges.js): sales, costs and profit for exactly that range ----------
+const isoOf = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+const daysInMonth = (mk) => new Date(Number(mk.slice(0, 4)), Number(mk.slice(5)), 0).getDate();
+// Monthly bills are spread evenly over the month's days; stock and one-off costs count on the day they were entered.
+export const FIXED_COSTS = ['rent', 'electricity', 'salary', 'phone'];
+function eachDay(from, to) {
+  const out = [];
+  for (let d = new Date(from + 'T00:00:00'); isoOf(d) <= to; d.setDate(d.getDate() + 1)) out.push(isoOf(d));
+  return out;
+}
+
+export function salesInRange(r) {
+  const today = isoOf(now());
+  const byDate = new Map(S.history.days.map((d) => [d.date, d]));
+  const days = eachDay(r.from, r.to).map((date) => {
+    if (date === today) { const t = salesToday(); return { date, total: t.total, count: t.bills, today: true }; }
+    const d = byDate.get(date);
+    return d ? { date, total: d.total, count: d.count } : null;
+  }).filter(Boolean);
+  const paytm = days.reduce((s, d) => s + d.total, 0);
+  // cash sales are told as one number per month: spread over the month (in full for a whole-month range)
+  let cash = 0;
+  for (const c of S.cashSales || []) cash += r.wholeMonth ? (c.month === r.from.slice(0, 7) ? c.amount : 0) : (c.amount / daysInMonth(c.month)) * eachDay(r.from, r.to).filter((d) => d.startsWith(c.month)).length;
+  cash = Math.round(cash);
+  const bills = days.reduce((s, d) => s + (d.count || 0), 0);
+  const full = days.filter((d) => !d.today);
+  const best = full.length ? full.reduce((a, b) => (b.total > a.total ? b : a)) : null;
+  const worst = full.length ? full.reduce((a, b) => (b.total < a.total ? b : a)) : null;
+  // the same number of days just before, for "vs before"
+  const len = eachDay(r.from, r.to).length;
+  const prevTo = isoOf(new Date(r.from + 'T00:00:00').getTime() - 86400000);
+  const prevFrom = isoOf(new Date(r.from + 'T00:00:00').getTime() - len * 86400000);
+  const prev = eachDay(prevFrom, prevTo).map((d) => byDate.get(d)).filter(Boolean);
+  const prevTotal = prev.length === len ? prev.reduce((s, d) => s + d.total, 0) : null;
+  return {
+    range: r.key, from: r.from, to: r.to, total: paytm + cash, paytm, cash, bills,
+    averagePerDay: days.length ? Math.round(paytm / days.length) : 0,
+    changeVsBefore: prevTotal ? Math.round(((paytm - prevTotal) / prevTotal) * 1000) / 10 : null,
+    best, worst, days,
+  };
+}
+
+export function costsInRange(r) {
+  const dates = eachDay(r.from, r.to);
+  const byCat = {};
+  let spread = false;
+  for (const e of S.expenses) {
+    let amt = 0;
+    if (r.wholeMonth) amt = e.month === r.from.slice(0, 7) ? e.amount : 0;
+    else if (FIXED_COSTS.includes(e.category)) {
+      const n = dates.filter((d) => d.startsWith(e.month)).length;
+      if (n) { amt = (e.amount / daysInMonth(e.month)) * n; spread = true; }
+    } else {
+      // a one-off cost counts on the day it was entered (or the 1st, if it was entered for another month)
+      const on = isoOf(e.at).startsWith(e.month) ? isoOf(e.at) : e.month + '-01';
+      amt = on >= r.from && on <= r.to ? e.amount : 0;
+    }
+    if (amt) byCat[e.category] = (byCat[e.category] || 0) + amt;
+  }
+  const items = Object.entries(byCat).map(([category, amount]) => ({ category, label: COST_CATEGORIES[category], amount: Math.round(amount), spread: !r.wholeMonth && FIXED_COSTS.includes(category) })).sort((a, b) => b.amount - a.amount);
+  const loanPaid = S.settlements.filter((st) => { const d = isoOf(st.at); return d >= r.from && d <= r.to; }).reduce((s, st) => s + st.deduction, 0);
+  const total = items.reduce((s, c) => s + c.amount, 0);
+  return { range: r.key, from: r.from, to: r.to, total, items, loanPaid, spread, hasStock: !!byCat.stock, entries: items.length };
+}
+
+export function profitInRange(r) {
+  const s = salesInRange(r), c = costsInRange(r);
+  const profit = s.total - c.total - c.loanPaid;
+  return {
+    range: r.key, from: r.from, to: r.to,
+    sales: s.total, paytm: s.paytm, cash: s.cash, costs: c.total, costItems: c.items, loanPaid: c.loanPaid, profit,
+    margin: s.total ? Math.round((profit / s.total) * 1000) / 10 : 0,
+    costsSpread: c.spread, hasStock: c.hasStock, costsTold: c.entries > 0,
+    days: s.days.map((d) => ({ date: d.date, total: d.total })),
   };
 }
 

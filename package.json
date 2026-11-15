@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "dev": "node --watch server.js",
-    "test": "node --test test/recording.test.js test/tts.test.js",
+    "test": "node --test test/recording.test.js test/tts.test.js test/agent.test.js",
     "icons": "node scripts/make-icons.mjs",
     "deploy": "node scripts/deploy-vercel.mjs",
     "telegram": "node scripts/telegram-setup.mjs"

@@ -159,6 +159,8 @@ export function sendToOwner(text, opts) {
 // Murugan asks Voxa from his phone: the server plugs Voxa's chat in here
 let ownerChat = null;
 export function setOwnerChat(fn) { ownerChat = fn; }
+let actionRunner = null;
+export function setActionRunner(fn) { actionRunner = fn; }
 export function ownerCode() {
   const c = C();
   // with a bot, the code comes from its token: every server copy agrees on it and nobody can guess it
@@ -532,6 +534,11 @@ if (PROVIDER === 'telegram') {
     if (callback) {
       if (!(c.ownerChatId && String(chatId) === String(c.ownerChatId))) return;
       if (callback.startsWith('addloy:')) { const r = addToLoyalty(callback.slice(7)); await waSend('tg:' + chatId, r.text); }
+      if (callback.startsWith('act:') && actionRunner) {
+        const [, aid, yn] = callback.split(':');
+        const a = await actionRunner(aid, yn === 'y');
+        await waSend('tg:' + chatId, a.status === 'done' ? (a.done && a.done.en) || 'Done.' : a.status === 'cancelled' ? 'Cancelled. Nothing was changed.' : a.status === 'failed' ? 'Could not do it: ' + a.error : 'Already handled.');
+      }
       return;
     }
     const raw = String(text || '');
@@ -549,13 +556,18 @@ if (PROVIDER === 'telegram') {
       if (/^(reject|not paid)\b/i.test(t) && waiting.length) { rejectRepay(waiting[0].e.id); await waSend('tg:' + chatId, 'Marked as not paid.'); return; }
       if (/^\/start/.test(t)) { await waSend('tg:' + chatId, 'You are linked as the owner. Ask me anything about your shop.'); return; }
       if (!ownerChat) { await waSend('tg:' + chatId, 'Voxa is starting up, try again in a moment.'); return; }
-      let reply = '';
-      try { reply = await ownerChat(t); } catch { reply = ''; }
+      let reply = '', acts = [];
+      try { const r = await ownerChat(t); reply = typeof r === 'string' ? r : (r && r.reply) || ''; acts = (r && r.actions) || []; } catch { reply = ''; }
       reply = reply || 'Sorry, I could not answer that.';
       // keep his questions and Voxa's answers, so the For Murugan tab shows them
       c.ownerLog = [{ q: t.slice(0, 300), a: reply.slice(0, 600), at: Date.now() }, ...(c.ownerLog || [])].slice(0, 12);
       E.touch();
       await waSend('tg:' + chatId, reply);
+      // a change Voxa proposed: details plus Confirm / Cancel buttons; nothing happens before a tap
+      for (const a of acts) {
+        const lines = (a.items || []).map((x) => `• ${(x.label && x.label.en) || ''}${x.amount ? ' ' + rupee(x.amount) : ''}`).join('\n');
+        await waSend('tg:' + chatId, `${a.title.en}\n${lines}`, { inline: [[{ text: '✅ ' + (a.confirm ? a.confirm.en : 'Confirm'), callback_data: `act:${a.id}:y` }, { text: '✖ Cancel', callback_data: `act:${a.id}:n` }]] });
+      }
       return;
     }
     // Murugan can also link by sharing his number, if it matches the number he saved on the For Murugan tab

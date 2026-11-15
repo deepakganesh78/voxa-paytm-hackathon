@@ -6,6 +6,8 @@ import * as SV from './sarvam.js';
 import * as CRM from './crm.js';
 import * as E from './engine.js';
 import { msg, rupee, LANG_NAMES } from './i18n.js';
+import * as RG from './ranges.js';
+import * as ACT from './actions.js';
 
 const MODEL = process.env.VOXA_MODEL || 'claude-opus-5-5';
 const EFFORT = process.env.VOXA_EFFORT || 'low';
@@ -110,7 +112,50 @@ async function runGemini({ system, messages, tools, ctx, maxTurns = 6 }) {
 }
 
 // ---------------------------------------------------------------- tools
+const RANGE_PROP = { type: 'string', enum: RG.RANGE_KEYS, description: "Time range he asked about. 'this_week' = Monday to today, 'last_7_days' = the last 7 days, 'this_month' = 1st to today. Use exactly what he said." };
+export const SCREENS = ['home', 'sales', 'payments', 'costs', 'loan', 'insights', 'customers', 'whatsapp', 'notes', 'settings'];
 const TOOL_DEFS = {
+  query_sales: {
+    description: 'Sales (Paytm + cash he told) for a time range, with the total, bills, average per day, change vs the same number of days before, best and weakest day, grouped by day, week, month or weekday. Shows a sales card under your reply.',
+    input_schema: { type: 'object', properties: { range: RANGE_PROP, group_by: { type: 'string', enum: ['day', 'week', 'month', 'weekday'] } }, required: ['range'] },
+  },
+  query_costs: {
+    description: 'Shop running costs for a time range (only what he told Voxa or added). Monthly bills (rent, electricity, salary, phone) are counted per day for part of a month.',
+    input_schema: { type: 'object', properties: { range: RANGE_PROP }, required: ['range'] },
+  },
+  query_profit: {
+    description: 'Profit for a time range: sales minus running costs minus loan payments, with the cost breakdown. Shows a profit card. Use the range he said (this week, today, last month...).',
+    input_schema: { type: 'object', properties: { range: RANGE_PROP }, required: ['range'] },
+  },
+  query_customers: {
+    description: "His customers (joined by the shop QR) and regular UPI payers. filter: owes (Udhaar due), regulars, stopped (regulars who stopped coming), loyalty, all. Shows a customer list card.",
+    input_schema: { type: 'object', properties: { filter: { type: 'string', enum: ['all', 'owes', 'regulars', 'stopped', 'loyalty'] }, limit: { type: 'number' } }, required: ['filter'] },
+  },
+  query_payments: {
+    description: 'Payments to the shop. status: all, pending (stuck), success, failed, refund. Optional customer name, amount and range. Shows a payments card.',
+    input_schema: { type: 'object', properties: { status: { type: 'string', enum: ['all', 'pending', 'success', 'failed', 'refund'] }, customer: { type: 'string' }, amount: { type: 'number' }, range: RANGE_PROP } },
+  },
+  query_loan: {
+    description: 'A business loan offer for the amount and months he asks: whether it fits his limit, monthly EMI, rate, total interest, what reaches his bank. Shows an interactive loan card with sliders. amount in rupees (1 lakh = 100000).',
+    input_schema: { type: 'object', properties: { amount: { type: 'number' }, months: { type: 'number' } } },
+  },
+  navigate: {
+    description: "Open a screen of the app for him, with filters. screen: home, sales, payments, costs, loan, insights, customers, whatsapp, notes, settings. params: range (a range key), view ('weak_days' on insights, 'pending' on payments, 'owes' on customers), customer.",
+    input_schema: { type: 'object', properties: { screen: { type: 'string', enum: SCREENS }, params: { type: 'object', properties: { range: { type: 'string', enum: RG.RANGE_KEYS }, view: { type: 'string' }, customer: { type: 'string' } } } }, required: ['screen'] },
+  },
+  render_card: {
+    description: "Show a card under your reply. type: sales_chart, profit_summary, customer_list, loan_offer, payment_status (numbers come from the app; pass range/filter/amount in params), or insight (a short tip: params.title and params.text, no numbers you did not get from a tool).",
+    input_schema: { type: 'object', properties: { type: { type: 'string', enum: ['sales_chart', 'profit_summary', 'customer_list', 'loan_offer', 'payment_status', 'insight'] }, params: { type: 'object', properties: { range: { type: 'string', enum: RG.RANGE_KEYS }, filter: { type: 'string' }, amount: { type: 'number' }, months: { type: 'number' }, status: { type: 'string' }, title: { type: 'string' }, text: { type: 'string' } } } }, required: ['type'] },
+  },
+  propose_action: {
+    description: "Propose a change for him to confirm; NOTHING happens until he taps Confirm. type: record_expenses (params.items [{category, amount}]), record_cash_sales (amount), udhaar_add (customer, amount, note), udhaar_paid (customer, amount), send_udhaar_reminders (customers: names, empty for everyone who owes), report_issue (title, summary_for_support, customer, amount, txn_id), create_offer (percent, start_hour, end_hour), start_loan_application (amount, months). After proposing, tell him in one sentence to check and tap Confirm.",
+    input_schema: { type: 'object', properties: { type: { type: 'string', enum: ACT.ACTION_TYPES }, params: { type: 'object', properties: {
+      items: { type: 'array', items: { type: 'object', properties: { category: { type: 'string', enum: ['stock', 'rent', 'electricity', 'salary', 'transport', 'phone', 'other'] }, amount: { type: 'number' } }, required: ['category', 'amount'] } },
+      amount: { type: 'number' }, customer: { type: 'string' }, note: { type: 'string' }, customers: { type: 'array', items: { type: 'string' } },
+      title: { type: 'string' }, summary_for_support: { type: 'string' }, txn_id: { type: 'string' },
+      percent: { type: 'number' }, start_hour: { type: 'number' }, end_hour: { type: 'number' }, months: { type: 'number' },
+    } } }, required: ['type', 'params'] },
+  },
   check_payment_status: {
     description: 'Look up a payment by txn_id, or the most recent payment of a given amount. Returns bank-level facts: whether the customer was debited, whether the merchant was credited, UTR, RBI deadline.',
     input_schema: { type: 'object', properties: { txn_id: { type: 'string' }, amount: { type: 'number', description: 'Amount in rupees, if txn_id is unknown' } } },
@@ -271,17 +316,169 @@ function findPayment(input) {
   return pays.find((t) => t.status === 'pending') || pays[0] || null;
 }
 
+// ---------------------------------------------------------------- cards: answers as UI, built only from app data
+const rangeOf = (key, fallback) => RG.rangeFromKey(RG.RANGE_KEYS.includes(key) ? key : fallback);
+const rangeInfo = (r) => ({ key: r.key, from: r.from, to: r.to, span: r.span, label: r.label, name: r.name });
+const SCREEN_FOR = { sales: 'sales', profit: 'costs', customers: 'customers', loan_offer: 'loan', payments: 'payments', insight: 'insights', confirm: null };
+
+function groupDays(days, by) {
+  if (by === 'weekday') {
+    const acc = Array.from({ length: 7 }, (_, k) => ({ weekday: k, total: 0, n: 0 })); // 0 = Monday
+    days.filter((d) => !d.today).forEach((d) => { const w = (new Date(d.date + 'T00:00:00').getDay() + 6) % 7; acc[w].total += d.total; acc[w].n++; });
+    return acc.map((x) => ({ key: String(x.weekday), weekday: x.weekday, total: x.n ? Math.round(x.total / x.n) : 0, days: x.n }));
+  }
+  if (by === 'week' || by === 'month') {
+    const m = new Map();
+    for (const d of days) {
+      const dt = new Date(d.date + 'T00:00:00');
+      const k = by === 'month' ? d.date.slice(0, 7) : RG.isoDay(new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - ((dt.getDay() + 6) % 7)));
+      m.set(k, (m.get(k) || 0) + d.total);
+    }
+    return [...m].map(([key, total]) => ({ key, total }));
+  }
+  return days.map((d) => ({ key: d.date, total: d.total, today: !!d.today }));
+}
+export function salesCard(key, groupBy) {
+  const r = rangeOf(key, 'last_7_days');
+  const s = E.salesInRange(r);
+  const by = groupBy || (r.days <= 31 ? 'day' : r.days <= 120 ? 'week' : 'month');
+  return {
+    type: 'sales', range: rangeInfo(r), open: { screen: 'sales', params: { range: r.key } },
+    data: { total: s.total, paytm: s.paytm, cash: s.cash, bills: s.bills, averagePerDay: s.averagePerDay, changeVsBefore: s.changeVsBefore, best: s.best, worst: s.worst, groupBy: by, groups: groupDays(s.days, by) },
+  };
+}
+const salesForModel = (c) => ({ range: c.range.label.en, total: c.data.total, paytm: c.data.paytm, cash_told: c.data.cash, bills: c.data.bills, average_per_day: c.data.averagePerDay, change_vs_before_percent: c.data.changeVsBefore, best_day: c.data.best, weakest_day: c.data.worst, grouped_by: c.data.groupBy, groups: c.data.groups.slice(0, 31) });
+
+export function profitCard(key) {
+  const r = rangeOf(key, 'this_month');
+  const p = E.profitInRange(r);
+  const { days, ...data } = p;
+  return { type: 'profit', range: rangeInfo(r), open: { screen: 'costs', params: { range: r.key } }, data };
+}
+const profitForModel = (c, costsOnly) => ({
+  range: c.range.label.en, ...(costsOnly ? {} : { sales: c.data.sales, profit: c.data.profit, margin_percent: c.data.margin }),
+  costs: c.data.costs, cost_items: c.data.costItems.map((x) => ({ category: x.label, amount: x.amount, spread_over_days: x.spread })), loan_payments: c.data.loanPaid,
+  note: !c.data.costsTold ? 'He has not told any costs for this range, so profit = sales. Ask him to add costs.' : c.data.costsSpread ? 'Monthly bills are counted per day for this range.' : '',
+});
+
+export function customersCard(filter = 'all', limit = 12) {
+  const S = E.getState();
+  const crm = S.crm || { customers: [] };
+  const LD = Math.max(2, Math.min(30, Number(crm.loyaltyDays) || 7));
+  const f = ['all', 'owes', 'regulars', 'stopped', 'loyalty'].includes(filter) ? filter : 'all';
+  let items = [];
+  const joined = crm.customers.map((cu) => ({ name: cu.name, owed: CRM.balanceOf(cu), visits: cu.visits.filter((d) => d > (cu.cardResetOn || '')).length }));
+  if (f === 'owes') items = joined.filter((x) => x.owed > 0).sort((a, b) => b.owed - a.owed).map((x) => ({ name: x.name, amount: x.owed, kind: 'owes' }));
+  else if (f === 'loyalty') items = joined.sort((a, b) => b.visits - a.visits).map((x) => ({ name: x.name, visits: x.visits, of: LD, kind: 'loyalty' }));
+  else {
+    const regs = E.regularsStatus().filter((x) => f !== 'stopped' || x.stopped).map((x) => ({ name: x.name, amount: x.avgAmount, everyDays: x.usualGap, daysSince: x.daysSince, stopped: x.stopped, kind: 'regular' }));
+    items = f === 'all' ? [...joined.map((x) => ({ name: x.name, amount: x.owed || null, visits: x.visits, of: LD, kind: x.owed ? 'owes' : 'loyalty' })), ...regs] : regs;
+  }
+  const totalDue = joined.reduce((s, x) => s + Math.max(0, x.owed), 0);
+  return {
+    type: 'customers', open: { screen: 'customers', params: { view: f } },
+    data: { filter: f, count: items.length, items: items.slice(0, limit || 12), totalDue, canRemind: f === 'owes' && items.length > 0 },
+  };
+}
+
+export function paymentsCard(input = {}) {
+  const S = E.getState();
+  const status = ['all', 'pending', 'success', 'failed', 'refund'].includes(input.status) ? input.status : 'all';
+  const r = input.range ? rangeOf(input.range, 'today') : null;
+  const all = [...S.txns, ...(S.history.todayList || [])];
+  const dayOf = (ms) => RG.isoDay(new Date(ms));
+  let list = all.filter((t) => (status === 'all' ? true : status === 'refund' ? t.kind === 'refund' : t.kind === 'payment' && t.status === status));
+  if (input.customer) list = list.filter((t) => String(t.fromName || '').toLowerCase().includes(String(input.customer).toLowerCase()));
+  if (input.amount) list = list.filter((t) => t.amount === Number(input.amount));
+  if (r) list = list.filter((t) => dayOf(t.createdAt) >= r.from && dayOf(t.createdAt) <= r.to);
+  list.sort((a, b) => b.createdAt - a.createdAt);
+  return {
+    type: 'payments', ...(r ? { range: rangeInfo(r) } : {}), open: { screen: 'payments', params: { view: status } },
+    data: {
+      status, count: list.length, total: list.reduce((s, t) => s + t.amount, 0),
+      items: list.slice(0, 8).map((t) => ({ id: t.id, name: t.kind === 'refund' ? t.toName : t.fromName, amount: t.amount, status: t.kind === 'refund' ? 'refund' : t.status, time: E.timeLabel(t.createdAt), utr: t.utr, deadline: t.status === 'pending' ? t.deadline : null })),
+    },
+  };
+}
+
+export function loanOfferCard(amount, months) {
+  const S = E.getState();
+  const prof = E.loanProfile();
+  const asked = Math.round(Number(amount) || 0) || null;
+  const plan = E.loanPlan({ amount: asked || undefined, months: months || undefined });
+  return {
+    type: 'loan_offer', open: { screen: 'loan', params: { amount: plan.amount, months: plan.months } },
+    data: {
+      asked, fits: asked ? asked <= prof.limit : true, limit: prof.limit, eligible: prof.eligible, band: prof.band,
+      active: S.loan.status === 'active' ? { amount: S.loan.amount, outstanding: S.loan.outstanding, emi: S.loan.emi, finish: S.loan.finish } : null,
+      plan: { amount: plan.amount, months: plan.months, rate: plan.rate, emi: plan.emi, daily: plan.daily, totalInterest: plan.totalInterest, totalPaid: plan.totalPaid, fee: plan.fee, feeGst: plan.feeGst, received: plan.received, start: plan.start, finish: plan.finish },
+      min: 50000, max: prof.limit,
+    },
+  };
+}
+const loanForModel = (c) => ({ asked: c.data.asked, fits_his_limit: c.data.fits, limit: c.data.limit, eligible: c.data.eligible, active_loan: c.data.active, offer: c.data.plan, note: 'The card has sliders; he can change amount and months there. The lender sets the final rate.' });
+
+function addCard(ctx, c) {
+  ctx.cards = ctx.cards || [];
+  ctx.cards = ctx.cards.filter((x) => x.type !== c.type || x.type === 'confirm');
+  ctx.cards.push(c);
+}
+const PROPOSE_FROM = {
+  record_expenses: (i) => ['record_expenses', { items: i.items }],
+  record_cash_sales: (i) => ['record_cash_sales', { amount: i.amount }],
+  udhar_add: (i) => ['udhaar_add', i],
+  udhar_paid: (i) => ['udhaar_paid', i],
+  report_issue: (i) => ['report_issue', i],
+  create_offer: (i) => ['create_offer', i],
+};
+function proposeAction(type, params, ctx) {
+  try {
+    const a = ACT.propose(type, params, { source: ctx.source, said: ctx.said || '' });
+    ctx.actions = ctx.actions || [];
+    ctx.actions.push(a);
+    addCard(ctx, { type: 'confirm', actionId: a.id });
+    return { proposed: true, action_id: a.id, what: a.title.en, waiting_for: 'his Confirm tap. Nothing is saved or sent yet. Tell him in one short sentence to check and confirm.' };
+  } catch (e) {
+    return { proposed: false, reason: e.message };
+  }
+}
+
 function runTool(name, input, ctx) {
   const S = E.getState();
   const lang = S.merchant.lang;
+  // in the chat every change waits for the merchant's Confirm tap
+  if (ctx.confirm && PROPOSE_FROM[name]) { const [type, params] = PROPOSE_FROM[name](input || {}); return proposeAction(type, params, ctx); }
   switch (name) {
+    case 'query_sales': { const c = salesCard(input.range, input.group_by); addCard(ctx, c); ctx.rangeUsed = c.range; return salesForModel(c); }
+    case 'query_costs':
+    case 'query_profit': { const c = profitCard(input.range); addCard(ctx, c); ctx.rangeUsed = c.range; return profitForModel(c, name === 'query_costs'); }
+    case 'query_customers': { const c = customersCard(input.filter, input.limit); addCard(ctx, c); return { filter: c.data.filter, customers: c.data.items, total_due: c.data.totalDue }; }
+    case 'query_payments': { const c = paymentsCard(input); addCard(ctx, c); if (c.range) ctx.rangeUsed = c.range; return { status: c.data.status, count: c.data.count, total: c.data.total, payments: c.data.items.map((x) => ({ txn_id: x.id, from: x.name, amount: x.amount, status: x.status, time: x.time })) }; }
+    case 'query_loan': { const c = loanOfferCard(input.amount, input.months); addCard(ctx, c); return loanForModel(c); }
+    case 'navigate': {
+      const screen = SCREENS.includes(input.screen) ? input.screen : 'home';
+      const params = { ...(input.params || {}) };
+      if (ctx.range && !params.range) params.range = ctx.range.key;
+      ctx.nav = { screen, params };
+      return { opened: screen, params, note: 'The screen is open next to the chat. Say in one sentence what he is looking at.' };
+    }
+    case 'render_card': {
+      const p = input.params || {};
+      const c = input.type === 'sales_chart' ? salesCard(p.range) : input.type === 'profit_summary' ? profitCard(p.range) : input.type === 'customer_list' ? customersCard(p.filter)
+        : input.type === 'loan_offer' ? loanOfferCard(p.amount, p.months) : input.type === 'payment_status' ? paymentsCard(p)
+        : { type: 'insight', data: { title: String(p.title || '').slice(0, 80), text: String(p.text || '').slice(0, 300) } };
+      addCard(ctx, c);
+      if (c.range) ctx.rangeUsed = c.range;
+      return { shown: c.type };
+    }
+    case 'propose_action': return proposeAction(input.type, input.params || {}, ctx);
     case 'check_payment_status': {
       const t = findPayment(input || {});
       ctx.checked = true;
       return t ? E.paymentFacts(t) : { found: false, note: 'No payment matches.' };
     }
     case 'list_pending_payments':
-      if (ctx.agent === 'chat') { ctx.cards = ctx.cards || []; if (!ctx.cards.some((c) => c.type === 'payments')) ctx.cards.push({ type: 'payments' }); }
+      if (ctx.agent === 'chat') addCard(ctx, paymentsCard({ status: 'pending' }));
       return S.txns.filter((t) => t.status === 'pending').map(E.paymentFacts);
     case 'create_ticket': {
       const ref = String(input.ref_id || ctx.refId || '');
@@ -308,7 +505,7 @@ function runTool(name, input, ctx) {
       return st || { found: false };
     }
     case 'get_sales_summary':
-      if (ctx.agent === 'chat') { ctx.cards = ctx.cards || []; if (!ctx.cards.some((c) => c.type === 'sales')) ctx.cards.push({ type: 'sales', period: ({ today: '7', week: '7', month: '30', '90days': '90' })[input.period] || '7' }); }
+      if (ctx.agent === 'chat') { const c = salesCard(({ today: 'today', week: 'last_7_days', month: 'last_30_days', '90days': 'last_90_days' })[input.period] || 'last_7_days'); addCard(ctx, c); ctx.rangeUsed = c.range; }
       return E.salesSummary(input.period || 'week');
     case 'get_hourly_pattern':
       return E.hourlyInsight();
@@ -318,8 +515,7 @@ function runTool(name, input, ctx) {
     }
     case 'get_loan_offer': {
       const p = E.loanPlan(input);
-      ctx.cards = ctx.cards || [];
-      if (!ctx.cards.some((c) => c.type === 'loan')) ctx.cards.push({ type: 'loan', amount: p.amount, months: p.months, rate: p.rate, extra: p.extra });
+      if (ctx.agent === 'chat') addCard(ctx, loanOfferCard(input.amount, input.months));
       return {
         status: S.loan.status, active_loan: S.loan.status === 'active' ? { amount: S.loan.amount, emi: S.loan.emi, repaid_so_far: S.loan.repaid, outstanding: S.loan.outstanding, finish: S.loan.finish } : null,
         amount: p.amount, months: p.months, interest_rate_per_year: p.rate, monthly_emi: p.emi, about_per_day: p.daily,
@@ -345,7 +541,7 @@ function runTool(name, input, ctx) {
       return { saved: added.map((e) => ({ category: e.label, amount: e.amount })), month_summary: E.profitSummary() };
     }
     case 'get_profit_summary':
-      if (ctx.agent === 'chat') { ctx.cards = ctx.cards || []; if (!ctx.cards.some((c) => c.type === 'costs')) ctx.cards.push({ type: 'costs' }); }
+      if (ctx.agent === 'chat') { const c = profitCard('this_month'); addCard(ctx, c); ctx.rangeUsed = c.range; }
       return E.profitSummary();
     case 'get_planner_insights': {
       ctx.cards = ctx.cards || [];
@@ -356,8 +552,7 @@ function runTool(name, input, ctx) {
       return E.regularsStatus().map((r) => ({ name: r.name, usually_every_days: r.usualGap, average_payment: r.avgAmount, last_paid: r.lastPaid, days_since: r.daysSince, seems_stopped: r.stopped }));
     case 'check_loan_eligibility': {
       const pr = E.loanProfile();
-      ctx.cards = ctx.cards || [];
-      if (!ctx.cards.some((c) => c.type === 'eligibility')) ctx.cards.push({ type: 'eligibility' });
+      if (ctx.agent === 'chat') addCard(ctx, loanOfferCard(input.amount, null));
       E.addBoardNote({ key: 'eligibility', tag: 'loan', title: `Loan check: ${pr.eligible ? 'looks eligible' : 'not eligible yet'} up to ${rupee(pr.limit)}`, text: `Voxa's estimate from your sales: about ${pr.monthlyRate}% a month (${pr.rate}% a year), fee ${pr.feePct}% + GST. The lender also checks your CIBIL score and decides the final offer in the Paytm for Business app.`, source: ctx.source });
       // answer the amount he asked for: does it fit, why the limit is what it is, what would change it
       const asked = Math.round(Number(input.amount) || 0);
@@ -403,21 +598,7 @@ function runTool(name, input, ctx) {
       }
       return { shown: input.type, style: card.style || 'default' };
     }
-    case 'report_issue': {
-      const S2 = E.getState();
-      const t = input.txn_id ? E.findTxn(String(input.txn_id).toUpperCase()) : (input.amount ? S2.txns.find((x) => x.kind === 'payment' && x.amount === Number(input.amount) && (!input.customer || x.fromName.toLowerCase().includes(String(input.customer).toLowerCase()))) : null);
-      // one open report per payment: add to it instead of opening another
-      const open = t && S2.tickets.find((k) => k.refId === t.id && k.status !== 'resolved');
-      if (open) {
-        E.addTimeline(open.id, 'Murugan', 'Reported again through Voxa: ' + String(input.summary_for_support).slice(0, 300));
-        if (open.status !== 'needs_human') E.escalateTicket(open.id, 'Murugan reported a problem with this payment');
-        return { ticket_id: open.id, status: 'already open, added his report and sent to a person' };
-      }
-      const k = E.createTicket({ type: 'merchant_report', refId: t ? t.id : 'MR-' + Date.now(), title: String(input.title).slice(0, 60), summary: String(input.summary_for_support).slice(0, 900), needsHuman: true, source: ctx.source });
-      E.addTimeline(k.id, 'Murugan', 'Reported through Ask Voxa.');
-      E.addBoardNote({ key: 'report-' + k.id, tag: 'payment', title: `Reported: ${k.title}`.slice(0, 80), text: `Ticket ${k.id} is with the support team. Voxa will tell you when there is an update.` });
-      return { ticket_id: k.id, status: 'sent to the support team', linked_payment: t ? t.id : null };
-    }
+    case 'report_issue': return ACT.reportIssue(input, ctx.source);
     case 'udhar_check': {
       const cu = CRM.findCustomer(input.customer);
       if (!cu) return { found: false, note: 'Not on his WhatsApp list. Ask the customer to scan the shop QR and tap Send; then Voxa can track their Udhaar.' };
@@ -496,11 +677,21 @@ function shareWithCustomer(t) {
   if (tk) E.addTimeline(tk.id, 'Voxa', 'Shared the verified status with the customer at the counter.');
 }
 
+const RANGE_TOOLS = ['query_sales', 'query_costs', 'query_profit', 'query_payments'];
 function callTool(name, input, ctx) {
   const t0 = Date.now();
+  input = input || {};
+  // the range he said wins: a model that answers "this week" with month numbers is corrected here
+  if (ctx.range && (RANGE_TOOLS.includes(name) || (name === 'render_card' && ['sales_chart', 'profit_summary', 'payment_status'].includes(input.type)))) {
+    const has = name === 'render_card' ? (input.params || {}).range : input.range;
+    if (has !== ctx.range.key) {
+      E.log({ agent: ctx.agent, source: 'rules', type: 'event', name: 'range_corrected', input: `${name}: ${has || 'none'}`, output: ctx.range.key, ms: 0 });
+      input = name === 'render_card' ? { ...input, params: { ...(input.params || {}), range: ctx.range.key } } : { ...input, range: ctx.range.key };
+    }
+  }
   let out;
   try {
-    out = runTool(name, input || {}, ctx);
+    out = runTool(name, input, ctx);
   } catch (e) {
     out = { error: e.message };
   }
@@ -857,7 +1048,7 @@ function appData(page) {
   return out;
 }
 
-const CHAT_TOOLS = ['get_app_data', 'get_sales_summary', 'get_hourly_pattern', 'list_pending_payments', 'check_payment_status', 'get_loan_offer', 'get_planner_insights', 'get_regular_customers', 'get_settlements', 'record_expenses', 'record_cash_sales', 'get_profit_summary', 'show_dashboard', 'check_loan_eligibility', 'add_note', 'save_answer_to_notes', 'change_note_dashboard', 'report_issue', 'show_style_choices', 'udhar_check', 'udhar_add', 'udhar_paid', 'customers_overview'];
+const CHAT_TOOLS = ['query_sales', 'query_costs', 'query_profit', 'query_customers', 'query_payments', 'query_loan', 'navigate', 'render_card', 'propose_action', 'get_app_data', 'get_hourly_pattern', 'check_payment_status', 'get_planner_insights', 'get_regular_customers', 'get_settlements', 'record_expenses', 'record_cash_sales', 'check_loan_eligibility', 'add_note', 'save_answer_to_notes', 'change_note_dashboard', 'report_issue', 'show_style_choices', 'udhar_check', 'udhar_add', 'udhar_paid', 'customers_overview'];
 
 // What is happening in the shop right now, so every answer starts from the live app, not a script.
 function shopSnapshot() {
@@ -881,20 +1072,25 @@ function shopSnapshot() {
   return parts.filter(Boolean).join('\n');
 }
 
-const CHAT_SYSTEM = (lang) => {
+const SCREEN_NAMES = { home: 'Home (briefing)', sales: 'Sales dashboard', payments: 'Payments', costs: 'Costs & profit', loan: 'Loan', insights: 'Sales insights', customers: 'Customers & Udhaar', whatsapp: 'WhatsApp/Telegram', notes: 'Voxa notes', settings: 'Settings', ask: 'Ask Voxa' };
+const CHAT_SYSTEM = (lang, context) => {
   const S = E.getState();
+  const where = context && context.screen ? `\nHE IS LOOKING AT: the ${SCREEN_NAMES[context.screen] || context.screen} screen${context.params && Object.keys(context.params).length ? ' with ' + JSON.stringify(context.params) : ''}${context.entity ? `, selected: ${JSON.stringify(context.entity).slice(0, 200)}` : ''}. Questions like "this", "here" or "these" are about that screen.` : '';
   return `You are Voxa, the AI accountant inside Voxa Pay for Business (a demo with fake money). You are talking to Murugan, who owns ${S.merchant.name}, a small shop in ${S.merchant.area}. He is busy, not technical, and may speak Tamil, Hindi or English.
 He often speaks Tamil or Hindi written in English letters, or mixes them with English (for example "customer pay panna, aana payment varala" means the customer says they paid but the money has not come). Understand that and act on it. Never answer with a general list of what you can do; if the request is unclear, use the most likely tool or ask one short question.
 LANGUAGE RULE: always answer in the language of his latest message. If he speaks or writes Tamil (in Tamil script, or Tamil words in English letters), answer in Tamil script. If Hindi, answer in Hindi (Devanagari). If English, answer in English. Never switch language because an earlier message was in another language.
-Reply in ${LANG_NAMES[lang]} only (unless the language rule above says otherwise for English letters), in plain spoken words, because your reply is read aloud. No markdown, no bullet points, no tables. Be very short: one sentence, under 20 words, only the direct answer with the key number. Do not recite breakdowns; a button under your reply lets him open the dashboard, so never describe or offer one. No greetings, no repeating his question, no extra advice, no offers like "anything else?". Give more detail only if he asks for it. Use Indian number format with ₹.
-You are an agent: decide what to look up, call the tools, then answer. Answer exactly what he asked this time, with the numbers from this question; do not repeat an earlier answer if his question changed (a new amount, a new period, a new name). Think about what he is trying to do and give the most useful next step. Always use tools for numbers; never invent figures. Sales, payments, profit and loan tools add their dashboard under your reply by themselves, so do not call show_dashboard for those; answer right after you have the numbers. Ask for all the tools you need in one turn when you can. When he asks you to remember or keep something, save it with add_note, and attach a dashboard to the note when numbers are involved (for example dashboard "costs" for a costs note).
-Bill photos: you CAN read bills. If he wants to send a photo of a bill or many bills, say yes and tell him to tap the camera button next to the mic; you will read every line, add up the costs and save them. Never tell him you cannot read photos or ask him to type the amounts instead. When a payment is already done (outcome starts with DONE), say only how it ended, for example the bank was late and the money has now reached him; never mention deadlines or RBI for a finished payment. If a customer says they paid but the money has not come, check it with check_payment_status or list_pending_payments, then tell Murugan simply: the money is stuck at the bank and will reach him or go back to the customer by the deadline. Do not say who is right. You work only for Murugan and never message customers.
-Udhaar (store credit; he may also say kanakku, udhar, kadan or credit, all the same thing). Always call it Udhaar in every language (in Tamil and Hindi replies write it as Udhaar or the local word for store credit), never kanakku. Customers join his list by scanning the shop QR on WhatsApp. For 'can I give X credit?' use udhar_check and answer yes/careful/no with the reasons in one or two sentences. For 'X 2000 Udhaar' or 'X 2000 udhar, keep it in log' use udhar_add. For 'X paid back' use udhar_paid. If the customer is not on the list, say they should scan the shop QR first. You can write Udhaar entries too, but never anything else about customers. Problems: if he reports a problem, says something does not add up, or asks you to complain or raise a ticket, check the payments first, then call report_issue with a clear summary for support, and tell him the ticket number in one sentence. Dashboards: you can build and change them, but only on your answers and his Voxa notes, never the app's own pages. When he wants a different look or has not said which look, call show_style_choices so he can tap a visual template; do not list chart types in words. If he names a look (pie, donut, bar, line, table), apply it directly. If he wants a different look (pie or donut, bars, columns, line, table) or different data or period, do it: for a dashboard in his notes use change_note_dashboard; for a new one use show_dashboard with the type, style and period he wants (save=true if he wants to keep it). Never say you cannot change a chart. If he asks you to add or save what you just said to the notes, call save_answer_to_notes (do not rewrite it with add_note). You may only change his Voxa notes (add_note, save_answer_to_notes, change_note_dashboard), his Costs & profit (record_expenses, record_cash_sales), and raise support tickets for him (report_issue); nothing else. Voxa notes (add_note, save_answer_to_notes) and Costs & profit (record_expenses, record_cash_sales). Never change sales, payments or the loan. Sales come only from his Paytm payments; cash sales and costs are only what he tells you, never a guess. If he tells you he sold some amount in cash, save it with record_cash_sales. If he tells you what he spent to run the shop (rent, electricity, salary, stock, transport and so on), save it with record_expenses, then tell him what is left this month. If stock purchases are missing, remind him the profit is not complete without them.
-If he asks whether he can get a loan, call check_loan_eligibility with the amount he asked. Answer his exact amount: yes or no, why (the rule and his monthly sales), and what he can do now (the largest amount with its daily and monthly payment) or what would get him there. Loans are applied for in the Loan tab of this app; never mention another app. When explaining a loan, use get_loan_offer and explain it like to a friend: the daily amount taken from settlement, the monthly total, the total interest, the month it ends, and how much reaches his bank after the fee. He chooses the amount and months; the lender sets the rate from his profile. Most merchant plans have no charge for closing early, but he should check the Key Fact Statement. When something is worth remembering (a deadline, a loan detail, a request), save it with add_note. For advice on growing the shop use get_planner_insights; it only knows payments and what he told you, never his stock, so never guess what is on his shelves.
+Reply in ${LANG_NAMES[lang]} only (unless the language rule above says otherwise for English letters), in plain spoken words, because your reply is read aloud. No markdown, no bullet points, no tables. Be very short: one sentence, under 20 words, with the key number and the time range you used (for example "This week (9 Nov – 15 Nov) you made ₹40,000 profit."). The card under your reply shows the details, so never recite breakdowns or offer a dashboard. No greetings, no repeating his question, no "anything else?". Use Indian number format with ₹.
+ANSWERS ARE UI: you are an agent. Call tools for every number; never invent figures. The query tools (query_sales, query_costs, query_profit, query_customers, query_payments, query_loan) read the real app data and show a card under your reply. TIME RANGES: pass exactly the range he said: today, yesterday, this_week (Monday to today), last_week, last_7_days, this_month, last_month, last_30_days, last_90_days, last_6_months, last_12_months. "Profit this week" is query_profit with range this_week, never month numbers. If he names no range, use this_month for profit and costs and last_7_days for sales.
+ACTING: use navigate to open the screen he wants with filters (for example "show weak sales days" = navigate insights with params.view weak_days; "stuck payments" = navigate payments view pending). Anything that changes data, sends a message or moves money must go through propose_action (or record_expenses, record_cash_sales, udhar_add, udhar_paid, report_issue, create_offer, which also only propose). Nothing happens until he taps Confirm on the card, so say "Check and tap Confirm", never "Done" or "Saved". "Remind everyone who owes me" = propose_action send_udhaar_reminders with no customers. A loan application = propose_action start_loan_application. If information is missing for an action (an amount, a customer), ask one short question.
+Bill photos: you CAN read bills and payment screenshots. Tell him to tap the camera or Upload button next to the mic. When a payment is already done (outcome starts with DONE), say only how it ended; never mention deadlines or RBI for a finished payment. If a customer says they paid but the money has not come, check it with check_payment_status or query_payments status pending, then say simply: the money is stuck at the bank and will reach him or go back to the customer by the deadline. Do not say who is right. You work only for Murugan.
+Udhaar (store credit; he may also say kanakku, udhar, kadan or credit, all the same thing). Always call it Udhaar, never kanakku. Customers join his list by scanning the shop QR. For 'can I give X credit?' use udhar_check and answer yes/careful/no with the reason. For 'X 2000 Udhaar' use udhar_add (it proposes). For 'X paid back' use udhar_paid (it proposes). For 'who owes me' use query_customers filter owes. If the customer is not on the list, say they should scan the shop QR first.
+Problems: if he reports a problem or asks to complain, check the payments first, then report_issue with a clear summary for support (it proposes a ticket he confirms).
+Notes and dashboards: when he asks you to remember something, save it with add_note (no confirmation needed). If he asks to save your answer, call save_answer_to_notes. To change a dashboard in his notes use change_note_dashboard; show_style_choices lets him pick a look. Never say you cannot change a chart.
+Loans: for "can I get a loan of X" call query_loan with the amount (1 lakh = 100000); the card has sliders. Answer yes or no for his exact amount and the monthly EMI in one sentence. Never mention another app. For advice on growing the shop use get_planner_insights; it only knows payments and what he told you, never his stock.
 Today is ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' })}.
-You can see every page of the app: Dashboard, Payments, Insights, Loan, Costs & profit, Voxa notes, WhatsApp/Telegram and Customers. For any question about any page, or a question that spans pages, call get_app_data with that page (or "all") and answer from the real data, comparing and calculating as needed. Never say you cannot see a page.
+You can see every page of the app: Home, Sales, Payments, Insights, Loan, Costs & profit, Voxa notes, WhatsApp/Telegram and Customers. For any question about any page, or a question that spans pages, use the query tools or get_app_data with that page (or "all") and answer from the real data. Never say you cannot see a page.
 WHAT IS HAPPENING IN HIS SHOP RIGHT NOW (live from the app; use it, and if something here needs his attention, such as a stuck payment or money he owes, mention it briefly even if he did not ask):
-${shopSnapshot()}`;
+${shopSnapshot()}${where}`;
 };
 
 // Privacy: phone numbers never leave the shop. A customer's number becomes their name;
@@ -918,17 +1114,21 @@ const romanLang = (s) => {
   return hi > ta ? 'hi' : ta > hi ? 'ta' : null;
 };
 
-// switchApp: the dashboard chat moves the whole app (screen + voice) to his language; WhatsApp does not
-export async function chat(text, heard, { switchApp = true } = {}) {
+// switchApp: the dashboard chat moves the whole app (screen + voice) to his language; WhatsApp does not.
+// context: what he is looking at in the app ({ screen, params, entity }).
+export async function chat(text, heard, { switchApp = true, context = null } = {}) {
   const S = E.getState();
   // answer in the language he actually used: Tamil script → Tamil, Devanagari → Hindi,
   // otherwise the language the speech recogniser heard, else English (the AI still spots Tanglish/Hinglish)
   let lang = scriptLang(text) || (['en', 'ta', 'hi'].includes(heard) ? heard : null) || romanLang(text) || (switchApp ? 'en' : S.merchant.lang);
   S.chat.push({ role: 'user', text, lang, at: Date.now() });
   E.touch();
-  const ctx = { agent: 'chat', source: BRAIN, said: text, cards: [] };
-  let reply = '';
-  if (AI_ON) {
+  const range = RG.parseRange(text);
+  const ctx = { agent: 'chat', source: BRAIN, said: text, cards: [], confirm: true, range, context, actions: [], nav: null };
+  // common questions are answered straight from the app data: instant, works offline, costs no AI call
+  let reply = fastAnswer(text, lang, ctx);
+  if (reply) ctx.source = 'voxa';
+  if (!reply && AI_ON) {
     try {
       const history = S.chat.slice(-12);
       while (history.length && history[0].role !== 'user') history.shift();
@@ -936,27 +1136,171 @@ export async function chat(text, heard, { switchApp = true } = {}) {
       const messages = history.filter((m) => m.role === 'user' || m.source !== 'rules').map((m) => ({ role: m.role, content: maskPhones(m.text) }));
       const last = messages[messages.length - 1];
       // the language rule rides on his latest message: known script → that language; English letters → match this message
-      if (last && last.role === 'user') last.content += lang === 'en'
+      if (last && last.role === 'user') last.content += (lang === 'en'
         ? '\n\n[Answer in the language of THIS message: Tamil written in English letters (Tanglish) gets a Tamil answer in Tamil script, Hindi in English letters gets a Hindi answer in Devanagari, English gets English. Ignore the language of earlier messages. Short.]'
-        : `\n\n[Answer only in ${LANG_NAMES[lang]}${lang === 'ta' ? ' (Tamil script)' : ' (Devanagari script)'}, even if earlier messages were in another language. Short.]`;
-      reply = await runBrain({ system: CHAT_SYSTEM(lang), messages, tools: toolList(CHAT_TOOLS), ctx });
+        : `\n\n[Answer only in ${LANG_NAMES[lang]}${lang === 'ta' ? ' (Tamil script)' : ' (Devanagari script)'}, even if earlier messages were in another language. Short.]`)
+        + (range ? `\n[Time range he asked about: ${range.key} = ${range.label.en}.]` : '');
+      reply = await runBrain({ system: CHAT_SYSTEM(lang, context), messages, tools: toolList(CHAT_TOOLS), ctx });
     } catch (e) {
       E.log({ agent: 'chat', source: 'rules', type: 'fallback', name: 'ai_error', input: '', output: e.message, ms: 0 });
     }
   }
   if (!reply) {
+    // keep proposals already made (they are real, waiting cards); drop half-built answers
     ctx.source = 'rules';
-    ctx.cards = [];
+    ctx.cards = (ctx.cards || []).filter((c) => c.type === 'confirm');
     reply = rulesChat(text, lang, ctx);
   }
+  // every answer about a period says which period it used
+  const used = ctx.rangeUsed;
+  if (used && reply && !mentionsRange(reply, used)) reply = `${used.label[scriptLang(reply) || lang] || used.label.en}: ${reply}`;
   const at = Date.now();
   // the reply's script settles Tanglish/Hinglish typed in English letters; the whole app follows that language
   lang = scriptLang(reply) || lang;
   if (switchApp) S.merchant.lang = lang;
-  S.chat.push({ role: 'assistant', text: reply, lang, at, source: ctx.source, cards: ctx.cards || [] });
+  S.chat.push({ role: 'assistant', text: reply, lang, at, source: ctx.source, cards: ctx.cards || [], ...(ctx.nav ? { nav: ctx.nav } : {}) });
   if (S.chat.length > 40) S.chat.splice(0, S.chat.length - 40);
   E.touch();
-  return { reply, source: ctx.source, cards: ctx.cards || [], lang, at };
+  return { reply, source: ctx.source, cards: ctx.cards || [], lang, at, nav: ctx.nav, actions: (ctx.actions || []).map((a) => ({ id: a.id, title: a.title, items: a.items, confirm: a.confirm })), range: used ? used.key : null };
+}
+const mentionsRange = (reply, r) => {
+  const t = reply.toLowerCase();
+  return [r.name.en, r.name.ta, r.name.hi, r.span].some((w) => w && t.includes(String(w).toLowerCase()))
+    || (r.key === 'this_week' && /this week|இந்த வாரம்|इस हफ/.test(t)) || (r.key === 'this_month' && /this month|இந்த மாத|इस महीने/.test(t));
+};
+
+// ---------------------------------------------------------------- fast answers (no AI call)
+const RE = {
+  profit: /profit|munafa|मुनाफ|லாப|laabam|labam|laabham|how much (is |did i )?(left|make|made|earn)|kitna bacha|micham|மிச்ச/i,
+  costQ: /\b(costs?|expenses?|spend|spent|spending)\b|செலவு|selavu|खर्च|kharcha/i,
+  sales: /\bsales?\b|\bsold\b|\bbusiness\b|விற்பனை|vikkanai|viyabaram|வியாபார|बिक्री|bikri|\bincome\b|\bearnings?\b|\bkamai\b|कमाई/i,
+  how: /\bhow (were|was|is|are|much|many)\b|eppadi|epdi|எப்படி|எவ்வளவு|evvalavu|evlo|kaisi|kaisa|kaise|कैसी|कैसा|kitni|kitna|कितनी|कितना|\bshow\b|\btell\b|காட்டு|दिखा/i,
+  loan: /\bloan\b|கடன்|லோன்|लोन|\bkadan\b|karz|क़र्ज़|कर्ज़?/i,
+  remind: /\bremind|reminder|நினைவூட்ட|ஞாபகப்படுத்த|याद दिला|yaad dila|\bnudge\b/i,
+  owe: /\bowes?\b|\bowing\b|\bdue\b|udhaa?r|kanakku|உதார்|கணக்கு|பாக்கி|baaki|bakaya|बकाया|उधार|\bcredit\b/i,
+  whoOwes: /who (all )?(owes?|has udhaa?r)|owes? me|udhaa?r (list|due)|யார்.*(பாக்கி|கடன்|உதார்)|kaun.*(udhaa?r|baaki)|किस.*(उधार|बकाया)|कौन.*(उधार|बकाया)/i,
+  weak: /\bweak|\bslow|\bworst|\blowest|\bpoor|\bdull|\bquiet|மந்த|குறைவான|कमज़ोर|कमजोर|सबसे कम|kam bikri/i,
+  day: /\bdays?\b|நாள்|நாட்கள்|दिन|\bdin\b/i,
+  record: /\b(paid|spent|add|save|record|bought|gave)\b|கொடுத்த|செலுத்த|சேர்|दिए|दिया|जोड़|सेव/i,
+};
+// "1 lakh", "1.5L", "50k", "50,000", "1 லட்சம்", "1 लाख" → rupees
+export function parseAmount(text) {
+  const t = String(text).toLowerCase().replace(/,/g, '');
+  const m = t.match(/(\d+(?:\.\d+)?)\s*(lakhs?|lacs?|l\b|லட்சம்|லட்ச|लाख|k\b|thousand|ஆயிரம்|हज़ार|हजार|crore|cr\b)?/);
+  if (!m) return 0;
+  const n = Number(m[1]);
+  const u = m[2] || '';
+  if (/lakh|lac|^l$|லட்ச|लाख/.test(u)) return Math.round(n * 100000);
+  if (/^k$|thousand|ஆயிரம்|हज़ार|हजार/.test(u)) return Math.round(n * 1000);
+  if (/crore|^cr$/.test(u)) return Math.round(n * 10000000);
+  return Math.round(n);
+}
+
+const FAST = {
+  profit: {
+    en: (r, p) => p.costsTold ? `${r.label.en}: you made ${rupee(p.profit)} profit on ${rupee(p.sales)} sales, after ${rupee(p.costs + p.loanPaid)} costs.` : `${r.label.en}: sales ${rupee(p.sales)}. You have not added costs for this period yet, so I cannot work out the profit.`,
+    ta: (r, p) => p.costsTold ? `${r.label.ta}: ${rupee(p.sales)} விற்பனையில், ${rupee(p.costs + p.loanPaid)} செலவு போக ${rupee(p.profit)} லாபம்.` : `${r.label.ta}: விற்பனை ${rupee(p.sales)}. இந்த காலத்துக்கு செலவுகள் இன்னும் சேர்க்கவில்லை, அதனால் லாபம் கணக்கிட முடியவில்லை.`,
+    hi: (r, p) => p.costsTold ? `${r.label.hi}: ${rupee(p.sales)} की बिक्री पर, ${rupee(p.costs + p.loanPaid)} खर्च के बाद ${rupee(p.profit)} मुनाफ़ा हुआ।` : `${r.label.hi}: बिक्री ${rupee(p.sales)}। इस समय के खर्च अभी नहीं जोड़े, इसलिए मुनाफ़ा नहीं निकाल सकता।`,
+  },
+  costs: {
+    en: (r, p) => p.costsTold ? `${r.label.en}: your shop costs are ${rupee(p.costs + p.loanPaid)}.` : `${r.label.en}: no costs added yet. Tell me your rent, stock and other costs.`,
+    ta: (r, p) => p.costsTold ? `${r.label.ta}: கடை செலவு ${rupee(p.costs + p.loanPaid)}.` : `${r.label.ta}: செலவுகள் இன்னும் சேர்க்கவில்லை. வாடகை, சரக்கு, மற்ற செலவுகளைச் சொல்லுங்கள்.`,
+    hi: (r, p) => p.costsTold ? `${r.label.hi}: दुकान का खर्च ${rupee(p.costs + p.loanPaid)}।` : `${r.label.hi}: अभी कोई खर्च नहीं जोड़ा। किराया, माल और बाकी खर्च बताइए।`,
+  },
+  sales: {
+    en: (r, s) => `${r.label.en}: you sold ${rupee(s.total)}${s.changeVsBefore !== null ? `, ${s.changeVsBefore >= 0 ? 'up' : 'down'} ${Math.abs(s.changeVsBefore)}% on the days before` : ''}.`,
+    ta: (r, s) => `${r.label.ta}: ${rupee(s.total)} விற்பனை${s.changeVsBefore !== null ? `, முந்தைய நாட்களை விட ${Math.abs(s.changeVsBefore)}% ${s.changeVsBefore >= 0 ? 'அதிகம்' : 'குறைவு'}` : ''}.`,
+    hi: (r, s) => `${r.label.hi}: ${rupee(s.total)} की बिक्री${s.changeVsBefore !== null ? `, पहले के दिनों से ${Math.abs(s.changeVsBefore)}% ${s.changeVsBefore >= 0 ? 'ज़्यादा' : 'कम'}` : ''}।`,
+  },
+  loanYes: {
+    en: (d) => `Yes, ${rupee(d.asked)} fits your limit of ${rupee(d.limit)}: about ${rupee(d.plan.emi)} a month for ${d.plan.months} months.`,
+    ta: (d) => `ஆம், ${rupee(d.asked)} உங்கள் வரம்பு ${rupee(d.limit)}க்குள் வருகிறது: ${d.plan.months} மாதங்களுக்கு மாதம் சுமார் ${rupee(d.plan.emi)}.`,
+    hi: (d) => `हाँ, ${rupee(d.asked)} आपकी सीमा ${rupee(d.limit)} में आता है: ${d.plan.months} महीने तक हर महीने करीब ${rupee(d.plan.emi)}।`,
+  },
+  loanNo: {
+    en: (d) => `${rupee(d.asked)} is above your limit of ${rupee(d.limit)}; you can get ${rupee(d.plan.amount)} at about ${rupee(d.plan.emi)} a month.`,
+    ta: (d) => `${rupee(d.asked)} உங்கள் வரம்பு ${rupee(d.limit)}ஐ விட அதிகம்; ${rupee(d.plan.amount)} மாதம் சுமார் ${rupee(d.plan.emi)}க்கு கிடைக்கும்.`,
+    hi: (d) => `${rupee(d.asked)} आपकी सीमा ${rupee(d.limit)} से ज़्यादा है; ${rupee(d.plan.amount)} करीब ${rupee(d.plan.emi)} महीने पर मिल सकता है।`,
+  },
+  loanActive: {
+    en: (d) => `Your loan is running: ${rupee(d.active.outstanding)} left, ${rupee(d.active.emi)} a month until ${d.active.finish}.`,
+    ta: (d) => `உங்கள் கடன் நடப்பில்: இன்னும் ${rupee(d.active.outstanding)}, ${d.active.finish} வரை மாதம் ${rupee(d.active.emi)}.`,
+    hi: (d) => `आपका लोन चल रहा है: ${rupee(d.active.outstanding)} बाकी, ${d.active.finish} तक हर महीने ${rupee(d.active.emi)}।`,
+  },
+  remind: {
+    en: (n, t) => `${n} customer${n > 1 ? 's' : ''} owe ${rupee(t)}. Check the messages and tap Send.`,
+    ta: (n, t) => `${n} வாடிக்கையாளர்கள் ${rupee(t)} தர வேண்டும். செய்திகளைப் பார்த்து அனுப்பு அழுத்துங்கள்.`,
+    hi: (n, t) => `${n} ग्राहकों पर ${rupee(t)} बाकी है। मैसेज देखकर भेजें दबाइए।`,
+  },
+  nobodyOwes: { en: () => 'Nobody owes you any Udhaar right now.', ta: () => 'இப்போது யாரும் உதார் பாக்கி வைக்கவில்லை.', hi: () => 'अभी किसी पर कोई उधार बाकी नहीं है।' },
+  owes: {
+    en: (d) => `${d.count} customer${d.count > 1 ? 's' : ''} owe you ${rupee(d.totalDue)}; ${d.items[0].name} owes the most, ${rupee(d.items[0].amount)}.`,
+    ta: (d) => `${d.count} வாடிக்கையாளர்கள் ${rupee(d.totalDue)} தர வேண்டும்; அதிகம் ${d.items[0].name}, ${rupee(d.items[0].amount)}.`,
+    hi: (d) => `${d.count} ग्राहकों पर ${rupee(d.totalDue)} बाकी है; सबसे ज़्यादा ${d.items[0].name} पर, ${rupee(d.items[0].amount)}।`,
+  },
+  weak: {
+    en: (r, w) => `${r.label.en}: ${w} is your weakest day. I opened Sales insights with the weak days.`,
+    ta: (r, w) => `${r.label.ta}: ${w} உங்கள் மிகக் குறைந்த விற்பனை நாள். குறைந்த நாட்களுடன் விற்பனை நுண்ணறிவைத் திறந்தேன்.`,
+    hi: (r, w) => `${r.label.hi}: ${w} सबसे कमज़ोर दिन है। कमज़ोर दिनों के साथ सेल्स इनसाइट्स खोल दिया।`,
+  },
+};
+const WEEKDAYS = { en: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], ta: ['திங்கள்', 'செவ்வாய்', 'புதன்', 'வியாழன்', 'வெள்ளி', 'சனி', 'ஞாயிறு'], hi: ['सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार', 'रविवार'] };
+
+export function fastAnswer(text, lang, ctx) {
+  const L = ['en', 'ta', 'hi'].includes(lang) ? lang : 'en';
+  const hasNum = /\d/.test(text);
+  // telling Voxa a cost or cash sale is a change, not a question: the agent (or rules) proposes it
+  if (hasNum && (RE.record.test(text) || isCostTalk(' ' + text.toLowerCase() + ' ')) && !RE.loan.test(text)) return '';
+  if (RE.remind.test(text) && RE.owe.test(text)) {
+    const r = callTool('propose_action', { type: 'send_udhaar_reminders', params: {} }, ctx);
+    if (!r.proposed) return FAST.nobodyOwes[L]();
+    const due = ACT.owingCustomers();
+    return FAST.remind[L](due.length, due.reduce((s, x) => s + x.owed, 0));
+  }
+  if (RE.whoOwes.test(text)) {
+    callTool('query_customers', { filter: 'owes' }, ctx);
+    const d = ctx.cards[ctx.cards.length - 1].data;
+    return d.count ? FAST.owes[L](d) : FAST.nobodyOwes[L]();
+  }
+  if (RE.weak.test(text) && (RE.day.test(text) || RE.sales.test(text))) {
+    const key = ctx.range ? ctx.range.key : 'last_30_days';
+    callTool('query_sales', { range: key, group_by: 'weekday' }, ctx);
+    callTool('navigate', { screen: 'insights', params: { view: 'weak_days', range: key } }, ctx);
+    const c = ctx.cards.find((x) => x.type === 'sales');
+    const w = c.data.groups.filter((g) => g.days).reduce((a, b) => (b.total < a.total ? b : a));
+    return FAST.weak[L](c.range, WEEKDAYS[L][w.weekday]);
+  }
+  if (RE.loan.test(text)) {
+    const amount = hasNum ? parseAmount(text) : 0;
+    const S = E.getState();
+    if (S.loan.status === 'active' && !amount) { callTool('query_loan', {}, ctx); return FAST.loanActive[L](ctx.cards[ctx.cards.length - 1].data); }
+    if (amount >= 10000) {
+      const months = (text.match(/(\d+)\s*(months?|மாத|महीने)/i) || [])[1];
+      callTool('query_loan', { amount, months: months ? Number(months) : undefined }, ctx);
+      const d = ctx.cards[ctx.cards.length - 1].data;
+      return d.fits ? FAST.loanYes[L](d) : FAST.loanNo[L](d);
+    }
+    return '';
+  }
+  if (RE.profit.test(text)) {
+    const key = ctx.range ? ctx.range.key : 'this_month';
+    callTool('query_profit', { range: key }, ctx);
+    const c = ctx.cards[ctx.cards.length - 1];
+    return FAST.profit[L](c.range, c.data);
+  }
+  if (RE.costQ.test(text) && !hasNum) {
+    const key = ctx.range ? ctx.range.key : 'this_month';
+    callTool('query_costs', { range: key }, ctx);
+    const c = ctx.cards[ctx.cards.length - 1];
+    return FAST.costs[L](c.range, c.data);
+  }
+  if (RE.sales.test(text) && (ctx.range || RE.how.test(text)) && !RE.weak.test(text)) {
+    const key = ctx.range ? ctx.range.key : 'last_7_days';
+    callTool('query_sales', { range: key }, ctx);
+    const c = ctx.cards[ctx.cards.length - 1];
+    return FAST.sales[L](c.range, c.data);
+  }
+  return '';
 }
 
 // ---------------------------------------------------------------- rule-based chat (no API key)
@@ -1157,11 +1501,10 @@ function rulesChat(text, lang, ctx) {
     const amt = parseExpenses(text).items.reduce((s, x) => s + x.amount, 0);
     if (amt > 0) {
       callTool('record_cash_sales', { amount: amt }, ctx);
-      const p = E.profitSummary();
       return {
-        en: `Saved: cash sales ${rupee(amt)} this month. With ${rupee(p.paytmSales)} on Paytm, you sold ${rupee(p.revenue)}. ${rupee(p.left)} is left after costs.`,
-        ta: `சேமித்தேன்: இந்த மாதம் ரொக்க விற்பனை ${rupee(amt)}. Paytm-இல் ${rupee(p.paytmSales)} சேர்த்து, மொத்தம் ${rupee(p.revenue)} விற்பனை. செலவுகள் போக ${rupee(p.left)} மிச்சம்.`,
-        hi: `सेव किया: इस महीने नकद बिक्री ${rupee(amt)}। Paytm के ${rupee(p.paytmSales)} मिलाकर कुल ${rupee(p.revenue)} की बिक्री। खर्च के बाद ${rupee(p.left)} बचे।`,
+        en: `Cash sales of ${rupee(amt)} for this month: check it and tap Confirm to save.`,
+        ta: `இந்த மாத ரொக்க விற்பனை ${rupee(amt)}: சரிபார்த்து உறுதி செய் அழுத்துங்கள்.`,
+        hi: `इस महीने की नकद बिक्री ${rupee(amt)}: देखकर कन्फ़र्म दबाइए।`,
       }[lang];
     }
   }
@@ -1173,14 +1516,13 @@ function rulesChat(text, lang, ctx) {
       callTool('record_expenses', { items }, ctx);
       const names = CAT_NAMES[lang];
       const saved = items.map((x) => `${names[x.category]} ${rupee(x.amount)}`).join(', ');
-      return R.costs[lang](saved, E.profitSummary());
+      return { en: `${saved}: check and tap Confirm to save these costs.`, ta: `${saved}: சரிபார்த்து உறுதி செய் அழுத்துங்கள்.`, hi: `${saved}: देखकर कन्फ़र्म दबाइए।` }[lang];
     }
   }
 
   // profit / costs dashboard
   if (has('profit', 'cost', 'expense', 'spend', 'லாபம்', 'செலவு', 'मुनाफा', 'मुनाफ़ा', 'खर्च', 'दुकान का खर्च')) {
     const p = callTool('get_profit_summary', {}, ctx);
-    card({ type: 'costs' });
     return p.entries ? R.costs[lang]('', p) : R.noCosts[lang]();
   }
 
@@ -1188,7 +1530,7 @@ function rulesChat(text, lang, ctx) {
   const said = Number(((text.match(/\d[\d,]*/) || [''])[0]).replace(/,/g, ''));
   const txId = (text.match(/tx\s?\d{3,4}/i) || [''])[0].replace(/\s/, '').toUpperCase();
   if (txId || has('paid', 'pending', 'stuck', 'not received', 'customer says', 'payment', 'transaction', 'utr', 'வரவில்லை', 'அனுப்பி', 'செலுத்தி', 'பணம்', 'पैसे नहीं', 'भेज', 'नहीं आया', 'रुका', 'पेमेंट')) {
-    card({ type: 'payments' });
+    addCard(ctx, paymentsCard({ status: txId || said ? 'all' : 'pending' }));
     if (txId || (said && !has('pending', 'stuck', 'customer says'))) {
       const t = callTool('check_payment_status', txId ? { txn_id: txId } : { amount: said }, ctx);
       const found = txId ? E.findTxn(txId) : S.txns.find((x) => x.kind === 'payment' && x.amount === said);
@@ -1222,11 +1564,9 @@ function rulesChat(text, lang, ctx) {
   }
 
   if (has('month', 'மாத', 'महीन')) {
-    card({ type: 'sales', period: '30' });
     return R.month[lang](callTool('get_sales_summary', { period: 'month' }, ctx));
   }
   if (has('sale', 'sold', 'week', 'today', 'income', 'business', 'dashboard', 'விற்பனை', 'வியாபார', 'வாரம்', 'இன்று', 'बिक्री', 'हफ्ते', 'आज', 'कमाई', 'डैशबोर्ड')) {
-    card({ type: 'sales', period: '7' });
     const w = callTool('get_sales_summary', { period: 'week' }, ctx);
     return R.week[lang](w, E.salesToday());
   }
@@ -1309,7 +1649,7 @@ export async function readBill({ image, mediaType = 'image/jpeg', sample = null,
   const known = sample && SAMPLE_BILLS[sample];
   S.chat.push({ role: 'user', text: (known ? `📷 ${known.label}` : '📷 Bill photo') + (note ? `\n${note}` : ''), lang, at: Date.now(), thumb });
   E.touch();
-  const ctx = { agent: 'chat', source: BRAIN, said: known ? known.label : 'Bill photo', cards: [] };
+  const ctx = { agent: 'chat', source: BRAIN, said: known ? known.label : 'Bill photo', cards: [], confirm: true, actions: [] };
   E.log({ agent: 'chat', source: ctx.source, type: 'event', name: 'bill_photo', input: known ? sample : mediaType, output: image ? `${Math.round((image.length * 3) / 4 / 1024)} KB image` : '', ms: 0 });
   let reply = '';
   if (BRAIN !== 'claude' && SV.SARVAM_ON && image && !known) {
@@ -1335,25 +1675,20 @@ export async function readBill({ image, mediaType = 'image/jpeg', sample = null,
         const category = cats.includes(r.category) ? r.category : 'other';
           const title = String(r.title || 'Bill').slice(0, 40) + (r.shop && r.shop !== 'null' ? ` · ${String(r.shop).slice(0, 30)}` : '');
         if (total > 0 && total < 10000000) {
-          E.addExpenses([{ category, amount: total, note: title }], { source: 'sarvam', said: `📷 ${title}: ${rupee(total)}`, replace: false });
-          const ps = E.profitSummary();
-          E.addBoardNote({ tag: 'dashboard', source: 'sarvam', card: { type: 'costs' }, title: `${title}: ${rupee(total)}`.slice(0, 80),
-            text: `Saved under ${E.COST_CATEGORIES[category]}.${r.due_date && r.due_date !== 'null' ? ' Pay by ' + r.due_date + '.' : ''} This month's costs so far: ${rupee(ps.costTotal)}.` });
-          ctx.cards = ctx.cards || [];
-          if (!ctx.cards.some((c) => c.type === 'costs')) ctx.cards.push({ type: 'costs' });
-          reply = (r.reply || '').trim() || BILL_TEXT.read[lang](title, rupee(total));
-          // the typed note may mention more costs (e.g. cash paid): let the brain save those too
+          proposeAction('record_expenses', { items: [{ category, amount: total, note: title }], replace: false }, ctx);
+          const confirmWord = { en: 'Check and tap Confirm to save it.', ta: 'சரிபார்த்து உறுதி செய் அழுத்துங்கள்.', hi: 'देखकर कन्फ़र्म दबाइए।' }[lang];
+          reply = ((r.reply || '').trim() || BILL_TEXT.read[lang](title, rupee(total)).replace(/ Saved.*$/, '')) + ' ' + confirmWord;
+          // the typed note may mention more costs (e.g. cash paid): let the brain propose those too
           if (note && BRAIN !== 'rules') {
-            const extra = `The bill total ${rupee(total)} is already saved, do not add it again. From my message, save only the other costs I mention: "${note}"`;
+            const extra = `The bill total ${rupee(total)} is already handled, do not add it again. From my message, propose only the other costs I mention: "${note}"`;
             try {
               const c = await chat(extra, lang, { switchApp: false });
               const k = S.chat.findIndex((m) => m.role === 'user' && m.text === extra);
               if (k >= 0) S.chat.splice(k, 1);
               const k2 = S.chat.findIndex((m) => m.role === 'assistant' && m.at === (c && c.at));
               if (k2 >= 0) S.chat.splice(k2, 1);
-              for (const x of S.expenses) if (x.said === extra) x.said = note.slice(0, 120);
-              if (c && c.reply) reply += ' ' + c.reply;
-              if (c && c.cards) for (const cd of c.cards) if (!ctx.cards.some((x) => x.type === cd.type)) ctx.cards.push(cd);
+              for (const a of E.getState().actions || []) if (a.said === extra.slice(0, 200)) a.said = note.slice(0, 120);
+              if (c && c.cards) for (const cd of c.cards) if (cd.type === 'confirm') ctx.cards.push(cd);
             } catch (e) {}
           }
         } else {
@@ -1399,7 +1734,7 @@ export async function readBill({ image, mediaType = 'image/jpeg', sample = null,
     callTool('record_expenses', { items: known.items }, ctx);
     const names = CAT_NAMES[lang];
     const saved = known.items.map((x) => `${names[x.category]} ${rupee(x.amount)}`).join(', ');
-    reply = BILL_TEXT.read[lang](known.label, saved) + ' ' + R.costs[lang]('', E.profitSummary());
+    reply = BILL_TEXT.read[lang](known.label, saved).replace(/ (Saved|சேமித்தேன்|सेव किया).*$/, '') + ' ' + { en: 'Check and tap Confirm to save it.', ta: 'சரிபார்த்து உறுதி செய் அழுத்துங்கள்.', hi: 'देखकर कन्फ़र्म दबाइए।' }[lang];
   }
   if (!reply) reply = BILL_TEXT.cannot[lang]();
   S.chat.push({ role: 'assistant', text: reply, lang, at: Date.now(), source: ctx.source, cards: ctx.cards || [] });

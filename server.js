@@ -5,6 +5,8 @@ import * as E from './src/engine.js';
 import * as A from './src/agent.js';
 import * as CRM from './src/crm.js';
 import * as TG from './src/telegram.js';
+import * as ACT from './src/actions.js';
+import { briefing } from './src/briefing.js';
 import { SKILLS } from './src/skills.js';
 import { msg, rupee, SPEECH_CODES } from './src/i18n.js';
 
@@ -35,8 +37,9 @@ const RESET_PIN = process.env.RESET_PIN || '';
 A.startAgent();
 // customers on WhatsApp: loyalty after every payment, Udhar questions, alerts to Murugan if he switched them on
 E.bus.on('payment_success', (txn) => { try { CRM.onPaymentSuccess(txn); } catch (e) { console.error(e); } });
-// Murugan can ask Voxa from his own phone chat; the answer goes back to that chat
-CRM.setOwnerChat(async (text) => (await A.chat(text, undefined, { switchApp: false })).reply);
+// Murugan can ask Voxa from his own phone chat; the answer goes back to that chat (changes come with Confirm buttons)
+CRM.setOwnerChat(async (text) => { const r = await A.chat(text, undefined, { switchApp: false }); return { reply: r.reply, actions: r.actions }; });
+CRM.setActionRunner((id, ok) => ACT.decide(id, ok));
 E.bus.on('payment_pending', (txn) => CRM.toMerchant('stuckAlerts', `Voxa: ${rupee(txn.amount)} from ${txn.fromName} is stuck at the bank. It will reach you or go back to them by ${txn.deadline}. I'm watching it.`));
 
 // ---------- live updates (Server-Sent Events) ----------
@@ -113,8 +116,22 @@ app.post('/api/merchant/expenses/add', route((b) => {
 app.post('/api/merchant/chat', route(async (b) => {
   const text = String(b.text || '').slice(0, 500).trim();
   if (!text) throw new Error('Say or type something first.');
-  return A.chat(text, b.heard);
+  const c = b.context && typeof b.context === 'object' ? b.context : null;
+  const context = c ? { screen: String(c.screen || '').slice(0, 20), params: c.params && typeof c.params === 'object' ? JSON.parse(JSON.stringify(c.params).slice(0, 300) || '{}') : {}, entity: c.entity ? String(JSON.stringify(c.entity)).slice(0, 200) : null } : null;
+  return A.chat(text, b.heard, { context });
 }));
+// Home briefing and actions Voxa proposed: nothing changes until the merchant confirms
+app.get('/api/merchant/briefing', async (req, res) => { await E.syncShared(); res.json(briefing(req.query.lang)); });
+app.post('/api/merchant/propose', route((b) => {
+  const a = ACT.propose(String(b.type || ''), b.params || {}, { source: 'you', said: '' });
+  // shows up in the chat as Voxa's card, so the conversation keeps the record
+  const S = E.getState();
+  S.chat.push({ role: 'assistant', text: a.title[S.merchant.lang] || a.title.en, lang: S.merchant.lang, at: Date.now(), source: 'voxa', cards: [{ type: 'confirm', actionId: a.id }] });
+  E.touch();
+  return { action: a };
+}));
+app.post('/api/merchant/action/confirm', route(async (b) => ({ action: await ACT.decide(String(b.id || ''), true, b.edits || {}) })));
+app.post('/api/merchant/action/cancel', route(async (b) => ({ action: await ACT.decide(String(b.id || ''), false) })));
 app.post('/api/merchant/bill', route(async (b) => {
   const image = typeof b.image === 'string' ? b.image.replace(/^data:[^,]+,/, '') : null;
   const mediaType = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(b.mediaType) ? b.mediaType : 'image/jpeg';
