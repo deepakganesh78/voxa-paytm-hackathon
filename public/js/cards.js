@@ -98,7 +98,7 @@
   R.loan_offer = (c, lang) => {
     const d = c.data, p = d.plan;
     if (d.active) return `<div class="vc vc-loan">${head('hand-coins', t(T.running, lang), null, lang)}<div class="vc-big">${inr(d.active.outstanding)} <small>${t(T.left, lang)}</small></div><div class="vc-meta"><span>${inr(d.active.emi)} ${t(T.monthly, lang)}</span><span>${t(T.ends, lang)}: ${esc(d.active.finish)}</span></div>${openLink(c, lang)}</div>`;
-    const id = 'L' + Math.random().toString(36).slice(2, 8);
+    const id = 'L' + (d.asked || 0) + '-' + p.amount + '-' + p.months;
     return `<div class="vc vc-loan" data-loancard="${id}" data-limit="${d.limit}">${head('hand-coins', t(T.loanOffer, lang), null, lang, d.asked ? `<span class="vc-pill ${d.fits ? 'ok' : 'warn'}">${t(d.fits ? T.fits : T.above, lang)}</span>` : '')}
       <div class="vc-big"><span data-lv="emi">${inr(p.emi)}</span> <small>${t(T.monthly, lang)}</small></div>
       <label class="vc-slider"><span>${t(T.amount, lang)} <b data-lv="amount">${inr(p.amount)}</b></span><input type="range" min="${d.min}" max="${Math.max(d.min, d.max)}" step="5000" value="${p.amount}" data-loanin="amount"></label>

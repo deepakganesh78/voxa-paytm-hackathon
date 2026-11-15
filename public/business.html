@@ -289,7 +289,7 @@
     .table-wrap, .pay-scroll { -webkit-overflow-scrolling: touch; }
   }
 </style>
-<link rel="stylesheet" href="/css/voxa.css?v=ai2">
+<link rel="stylesheet" href="/css/voxa.css?v=ai3">
 </head>
 <body data-role="merchant">
 <header class="shell" data-compact-side="1" data-lang-toggle="1" data-title="Murugan and Co" data-sub="Voxa Pay for Business" data-user="Murugan" data-user-role="Shop owner · Deepak"></header>
@@ -312,7 +312,7 @@
       <div class="home-greet" id="homeGreet" data-noi18n></div>
       <form class="askbar" id="askBar" autocomplete="off">
         <button class="askbar-mic" id="homeMic" type="button" aria-label="Speak to Voxa"><i data-lucide="mic"></i></button>
-        <input class="askbar-input" id="homeInput" data-noi18n placeholder="Ask Voxa anything about your shop?" aria-label="Ask Voxa">
+        <input class="askbar-input" id="homeInput" data-noi18n placeholder="Ask Voxa anything about your shop…" aria-label="Ask Voxa">
         <label class="askbar-ico" title="Photo of a bill or payment"><i data-lucide="camera"></i><input type="file" accept="image/*" capture="environment" hidden data-billpick></label>
         <button class="askbar-go" type="submit" aria-label="Ask"><i data-lucide="arrow-up"></i></button>
       </form>
@@ -504,7 +504,7 @@
 <script src="/vendor/lucide.js"></script>
 <script src="/js/common.js?v=mobile-1"></script>
 <script src="/js/tamil.js"></script>
-<script src="/js/cards.js?v=ai2"></script>
+<script src="/js/cards.js?v=ai3"></script>
 <script>
 const { inr, esc, $, $$, i, icons, api, subscribe, badge, route, ago, time, toast, speak, listen } = V;
 let S = null, pane = 'home', soundOn = true, seen = null, busy = false, period = '7', earnP = 'today';
@@ -1883,11 +1883,13 @@ function renderChat() {
       + (sessions.length ? sessions.map((x) => row(x.id, x.title, x.at, x.messages.length, false)).join('') : (S.chat.length ? '' : '<div class="empty">No chats yet.</div>'));
     if (showChats && !fullPage) { icons(); return; }
   }
-  $('#chat').innerHTML = (S.chat.length ? S.chat.map((c, idx) => `<div class="msg ${c.role}">${c.thumb ? `<img class="bill-thumb" src="${esc(c.thumb)}" alt="">` : ''}${esc(c.text)}${c.role === 'assistant' ? `<span class="src">${srcTag(c.source)}<button class="save-note play-btn ${V.speakingKey() === 'm' + c.at ? 'on' : ''}" data-play="${idx}" title="${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play this answer'}">${i(V.speakingKey() === 'm' + c.at ? 'square' : 'play')}${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play'}</button><button class="save-note" data-savenote="${idx}" ${c.savedNote ? 'disabled' : ''} title="Save to Voxa notes">${i(c.savedNote ? 'bookmark-check' : 'bookmark-plus')}${c.savedNote ? 'Saved' : 'Save to notes'}</button></span>` : ''}</div>${c.role === 'assistant' && c.cards ? c.cards.map((cd) => (VC.has(cd) ? VC.render(cd, S.merchant.lang, S) : chatCard(cd))).join('') : ''}`).join('')
+  const chatHtml = (S.chat.length ? S.chat.map((c, idx) => `<div class="msg ${c.role}">${c.thumb ? `<img class="bill-thumb" src="${esc(c.thumb)}" alt="">` : ''}${esc(c.text)}${c.role === 'assistant' ? `<span class="src">${srcTag(c.source)}<button class="save-note play-btn ${V.speakingKey() === 'm' + c.at ? 'on' : ''}" data-play="${idx}" title="${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play this answer'}">${i(V.speakingKey() === 'm' + c.at ? 'square' : 'play')}${V.speakingKey() === 'm' + c.at ? 'Stop' : 'Play'}</button><button class="save-note" data-savenote="${idx}" ${c.savedNote ? 'disabled' : ''} title="Save to Voxa notes">${i(c.savedNote ? 'bookmark-check' : 'bookmark-plus')}${c.savedNote ? 'Saved' : 'Save to notes'}</button></span>` : ''}</div>${c.role === 'assistant' && c.cards ? c.cards.map((cd) => (VC.has(cd) ? VC.render(cd, S.merchant.lang, S) : chatCard(cd))).join('') : ''}`).join('')
     : `<div class="voxa-empty"><div class="dot-ico ai" style="width:64px;height:64px;border-radius:20px">${i('bot')}</div><h2 class="card-title">${esc(intro)}</h2></div>`) + (busy ? '<div class="msg assistant typing">Voxa is thinking…</div>' : '');
-  $('#chat').scrollTop = $('#chat').scrollHeight;
+  // a live update that changes nothing in the chat leaves it alone (no jump, sliders keep their place)
+  if (chatHtml !== lastChatHtml) { lastChatHtml = chatHtml; $('#chat').innerHTML = chatHtml; $('#chat').scrollTop = $('#chat').scrollHeight; }
   icons();
 }
+let lastChatHtml = '';
 
 const noteIcon = { received: ['indian-rupee', 'ok'], settlement: ['landmark', 'ok'], loan: ['hand-coins', 'ok'], verified: ['shield-check', 'ai'], support: ['headphones', 'ai'], voxa: ['bot', 'ai'], double_payment: ['alert-triangle', 'bad'] };
 
@@ -2054,6 +2056,6 @@ subscribe((state) => {
   if (window.VS) VS.onState();
 });
 </script>
-<script src="/js/shell.js?v=ai2"></script>
+<script src="/js/shell.js?v=ai3"></script>
 </body>
 </html>
